@@ -1,0 +1,12 @@
+name: car_price_analysis
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.10
+  - numpy
+  - pandas
+  - matplotlib
+  - pip
+  - pip:
+    - seaborn==0.13.2
