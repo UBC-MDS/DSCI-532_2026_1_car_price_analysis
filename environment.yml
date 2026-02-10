@@ -8,5 +8,6 @@ dependencies:
   - pandas
   - matplotlib
   - pip
+  - jupyterlab
   - pip:
     - seaborn==0.13.2
