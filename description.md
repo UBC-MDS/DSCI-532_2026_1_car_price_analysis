@@ -1,0 +1,1 @@
+This dashboard enables comparison between hybrid and standard fuel vehicles across price category, performance efficiency, body type, and engine size. It is designed for environmentally conscious Uber drivers who want to understand trade offs between cost, efficiency, and practicality.
