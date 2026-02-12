@@ -1,0 +1,14 @@
+name: car_price_analysis_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.10
+  - numpy
+  - pandas
+  - matplotlib
+  - pip
+  - jupyterlab
+  - pip:
+    - seaborn==0.13.2
+    - shiny
