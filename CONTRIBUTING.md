@@ -62,7 +62,7 @@ local development.
 2. Clone your fork locally (*if you want to work locally*)
 
     ```shell
-    git clone git@github.com:your_name_here/DSCI-532_2026_1_car_price_analysis.git
+    git clone git@github.com:UBC-MDS/DSCI-532_2026_1_car_price_analysis.git
     ```
 
 
