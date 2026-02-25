@@ -9,3 +9,21 @@
 
 
 ## Component Inventory
+
+- `input_brand`: Selectize input for car brand (`All` + unique values from `Brand`)
+- `input_body_type`: Selectize input for body type (`All` + unique values from `Body_Type`)
+- `input_price_range`: Slider input for USD price range (min/max from `Price_USD`)
+- `input_fuel_type`: Selectize input for fuel type (`All` + unique values from `Fuel_Type`)
+- `filtered_df` (`@reactive.calc`): Filtered dataframe with only `Brand`, `Body_Type`, `Price_USD`, and `Fuel_Type`
+
+## Reactivity Diagram
+
+```mermaid
+flowchart TD
+	A[input_brand] --> E[filtered_df reactive.calc]
+	B[input_body_type] --> E
+	C[input_price_range] --> E
+	D[input_fuel_type] --> E
+	F[data/raw/global_cars_enhanced.csv] --> E
+	E --> G[EDA outputs]
+```
