@@ -74,7 +74,7 @@ with ui.nav_panel("EDA"):
             if input.input_fuel_type() != "All":
                 df = df[df["Fuel_Type"] == input.input_fuel_type()]
 
-            return df[["Brand", "Body_Type", "Price_USD", "Fuel_Type"]]
+            return df
 
         with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
             with ui.card():
