@@ -36,7 +36,7 @@ You may find this analysis in [notebooks/eda_analysis.ipynb](../notebooks/eda_an
 ## Section 5: App Sketch & Description
 
 
-![Sketch](../img/Sketch.png)
+![sketch](../img/sketch.png)
 
 
 

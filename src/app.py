@@ -75,6 +75,38 @@ with ui.nav_panel("EDA"):
                 df = df[df["Fuel_Type"] == input.input_fuel_type()]
 
             return df
+        
+        @reactive.calc
+        def summary_kpis():
+            df = filtered_df()
+            count = int(len(df))
+            avg_price = float(df["Price_USD"].mean()) if count > 0 else None
+            return {"count": count, "avg_price": avg_price}
+        
+        # KPI value boxes
+        with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
+            with ui.card():
+                ui.card_header("Vehicles in selection")
+
+                @render.ui
+                def value_box_count():
+                    k = summary_kpis()
+                    return ui.value_box(
+                        title="Vehicle Count",
+                        value=f"{k['count']:,}",
+                    )
+
+            with ui.card():
+                ui.card_header("Average price (filtered)")
+
+                @render.ui
+                def value_box_avg_price():
+                    k = summary_kpis()
+                    value = "—" if k["avg_price"] is None else f"${k['avg_price']:,.0f}"
+                    return ui.value_box(
+                        title="Avg Price (USD)",
+                        value=value,
+                    )
 
         with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
             with ui.card():
