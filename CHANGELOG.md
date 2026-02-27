@@ -1,7 +1,7 @@
 ## [0.2.0]
 
 ### Added
-- Working Shiny dashboard prototype deployed to Posit Connect Cloud.
+- Working Shiny dashboard prototype deployed to Posit Connect Cloud (stable main and auto updating dev preview).
 - Sidebar filters for Brand, Body Type, Fuel Type, and Price range.
 - Shared reactive filtering (`filtered_df`) across multiple outputs.
 - KPI value boxes showing Vehicle Count and Average Price for the current selection.
