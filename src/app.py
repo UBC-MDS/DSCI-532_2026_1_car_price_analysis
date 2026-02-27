@@ -89,14 +89,14 @@ with ui.nav_panel("EDA"):
                 df = df[df["Fuel_Type"] == input.input_fuel_type()]
 
             return df
-        
+
         @reactive.calc
         def summary_kpis():
             df = filtered_df()
             count = int(len(df))
             avg_price = float(df["Price_USD"].mean()) if count > 0 else None
             return {"count": count, "avg_price": avg_price}
-        
+
         @reactive.effect
         @reactive.event(input.reset_btn)
         def _reset_filters():
@@ -107,7 +107,7 @@ with ui.nav_panel("EDA"):
                 "input_price_range",
                 value=(price_min, price_max),
             )
-        
+
         # KPI value boxes
         with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
             with ui.card():
@@ -267,7 +267,8 @@ with ui.nav_panel("EDA"):
                     ax.grid(True, axis="y", alpha=0.3)
                     fig.tight_layout()
                     return fig
-        
+
+        with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
             with ui.card():
                 ui.card_header("Horsepower vs Price")
 
@@ -305,3 +306,7 @@ with ui.nav_panel("EDA"):
 
                     fig.tight_layout()
                     return fig
+
+            with ui.card():
+                ui.card_header("Manufacture Year vs. Mileage")
+                ui.p("Placeholder — future chart")
