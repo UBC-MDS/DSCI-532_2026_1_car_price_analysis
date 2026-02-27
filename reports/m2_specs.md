@@ -27,3 +27,10 @@ flowchart TD
 	F[data/raw/global_cars_enhanced.csv] --> E
 	E --> G[EDA outputs]
 ```
+
+## Complexity Enhancement
+
+### Reset Button
+
+We implemented a Reset Filters button using `@reactive.event` and `@reactive.effect`. When clicked, it restores all sidebar filters to their default values.
+This improves user experience by allowing users to quickly return to a clean state without manually resetting each filter.
