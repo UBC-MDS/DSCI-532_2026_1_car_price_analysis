@@ -70,6 +70,7 @@ with ui.nav_panel("EDA"):
                 pre="$",
             )
             ui.input_selectize("input_fuel_type", "Fuel Type", choices=fuel_type_choices, selected="All")
+            ui.input_action_button("reset_btn", "Reset Filters")
 
         @reactive.calc
         def filtered_df():
@@ -95,6 +96,17 @@ with ui.nav_panel("EDA"):
             count = int(len(df))
             avg_price = float(df["Price_USD"].mean()) if count > 0 else None
             return {"count": count, "avg_price": avg_price}
+        
+        @reactive.effect
+        @reactive.event(input.reset_btn)
+        def _reset_filters():
+            ui.update_selectize("input_brand", selected="All")
+            ui.update_selectize("input_body_type", selected="All")
+            ui.update_selectize("input_fuel_type", selected="All")
+            ui.update_slider(
+                "input_price_range",
+                value=(price_min, price_max),
+            )
         
         # KPI value boxes
         with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
