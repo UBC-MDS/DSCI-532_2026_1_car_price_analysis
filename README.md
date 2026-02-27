@@ -11,7 +11,7 @@ The dashboard supports informed decision making by enabling dynamic filtering an
 
 ## Demo
 
-![Dashboard Demo](img/demo.gif)
+![Dashboard Demo](img/demo.mp4)
 
 ## Features
 
