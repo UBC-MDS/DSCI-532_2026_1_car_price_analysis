@@ -110,7 +110,7 @@ with ui.nav_panel("EDA"):
                     )
 
             with ui.card():
-                ui.card_header("Average price (filtered)")
+                ui.card_header("Average price")
 
                 @render.ui
                 def value_box_avg_price():
@@ -152,7 +152,7 @@ with ui.nav_panel("EDA"):
                     fig, ax = plt.subplots(figsize=(6, 4))
 
                     if df.empty:
-                        ax.text(0.5, 0.5, "No data for current filters.",
+                        ax.text(0.5, 0.5, "No data for selected filters.",
                                 ha="center", va="center", transform=ax.transAxes)
                         ax.axis("off")
                         return fig
@@ -183,7 +183,7 @@ with ui.nav_panel("EDA"):
                     fig, ax = plt.subplots(figsize=(6, 4))
 
                     if df.empty:
-                        ax.text(0.5, 0.5, "No data for current filters.",
+                        ax.text(0.5, 0.5, "No data for selected filters.",
                                 ha="center", va="center", transform=ax.transAxes)
                         return fig
 
@@ -256,40 +256,40 @@ with ui.nav_panel("EDA"):
                     fig.tight_layout()
                     return fig
         
-        with ui.card():
-            ui.card_header("Horsepower vs Price")
+            with ui.card():
+                ui.card_header("Horsepower vs Price")
 
-            @render.plot
-            def plot_hp_price():
-                df = filtered_df()
+                @render.plot
+                def plot_hp_price():
+                    df = filtered_df()
 
-                fig, ax = plt.subplots(figsize=(6, 4))
+                    fig, ax = plt.subplots(figsize=(6, 4))
 
-                if df.empty:
-                    ax.text(0.5, 0.5, "No data for current filters.",
+                    if df.empty:
+                        ax.text(0.5, 0.5, "No data for selected filters.",
                             ha="center", va="center", transform=ax.transAxes)
-                    ax.axis("off")
+                        ax.axis("off")
+                        return fig
+
+                    df = df.dropna(subset=["Horsepower", "Price_USD"])
+
+                    for fuel, group in df.groupby("Fuel_Type"):
+                        ax.scatter(
+                            group["Horsepower"],
+                            group["Price_USD"],
+                            label=fuel,
+                            color=FUEL_COLORS.get(fuel, "#999999"),
+                            alpha=0.7,
+                            edgecolors="white",
+                            linewidth=0.5,
+                            s=50,
+                        )
+
+                    ax.set_xlabel("Horsepower")
+                    ax.set_ylabel("Price (USD)")
+                    ax.set_title("Horsepower vs Price")
+                    ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9)
+                    ax.grid(True, alpha=0.3)
+
+                    fig.tight_layout()
                     return fig
-
-                df = df.dropna(subset=["Horsepower", "Price_USD"])
-
-                for fuel, group in df.groupby("Fuel_Type"):
-                    ax.scatter(
-                        group["Horsepower"],
-                        group["Price_USD"],
-                        label=fuel,
-                        color=FUEL_COLORS.get(fuel, "#999999"),
-                        alpha=0.7,
-                        edgecolors="white",
-                        linewidth=0.5,
-                        s=50,
-                    )
-
-                ax.set_xlabel("Horsepower")
-                ax.set_ylabel("Price (USD)")
-                ax.set_title("Horsepower vs Price")
-                ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9)
-                ax.grid(True, alpha=0.3)
-
-                fig.tight_layout()
-                return fig
