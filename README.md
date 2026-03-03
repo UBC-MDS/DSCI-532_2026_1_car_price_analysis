@@ -15,7 +15,7 @@ The dashboard supports informed decision making by enabling dynamic filtering an
 
 ## Data Source
 
-Dataset: [Global Cars Enhanced](https://www.kaggle.com/) — 300 vehicles with 16 attributes including brand, pricing, engine specs, and efficiency metrics. Source: Kaggle.
+Dataset: [Global Cars Enhanced](https://www.kaggle.com/datasets/tatheerabbas/car-price-classification-ready-data) — 300 vehicles with 16 attributes including brand, pricing, engine specs, and efficiency metrics. Source: Kaggle.
 
 ## Features
 
