@@ -32,95 +32,91 @@ ui.page_opts(
     page_fn=partial(page_navbar, id="page"),
 )
 
-ui.tags.style("""
-/* Overall page */
-body {
-    background-color: #f7f9fc;
-    color: #243b53;
-}
+ui.head_content(
+    ui.tags.style("""
+    body {
+        background-color: #f7f9fc;
+        color: #243b53;
+    }
 
-/* Top navbar / header */
-.navbar {
-    background-color: #16324f !important;
-    border-bottom: none !important;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-}
+    .navbar {
+        background-color: #16324f !important;
+        border-bottom: none !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
 
-.navbar-brand,
-.navbar-nav .nav-link {
-    color: #f8fafc !important;
-    font-weight: 500;
-}
+    .navbar-brand,
+    .navbar-nav .nav-link {
+        color: #f8fafc !important;
+        font-weight: 500;
+    }
 
-.navbar-nav .nav-link.active,
-.navbar-nav .nav-link:hover {
-    color: #ffffff !important;
-    background-color: rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
-}
+    .navbar-nav .nav-link.active,
+    .navbar-nav .nav-link:hover {
+        color: #ffffff !important;
+        background-color: rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+    }
 
-/* Main content spacing */
-.container-fluid {
-    padding-top: 1.25rem;
-    padding-bottom: 1.5rem;
-}
+    .container-fluid {
+        padding-top: 1.25rem;
+        padding-bottom: 1.5rem;
+    }
 
-/* Titles */
-h1 {
-    font-size: 2.4rem;
-    font-weight: 700;
-    color: #102a43;
-    margin-bottom: 0.25rem;
-}
+    h1 {
+        font-size: 2.4rem;
+        font-weight: 700;
+        color: #102a43;
+        margin-bottom: 0.25rem;
+    }
 
-h2 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: #243b53;
-    margin-bottom: 1rem;
-}
+    h2 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #243b53;
+        margin-bottom: 1rem;
+    }
 
-/* Cards */
-.card {
-    border: none !important;
-    border-radius: 16px !important;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
-    background-color: #ffffff;
-}
+    .card {
+        border: none !important;
+        border-radius: 16px !important;
+        box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+        background-color: #ffffff;
+    }
 
-.card-header {
-    background-color: transparent !important;
-    border-bottom: none !important;
-    font-weight: 600;
-    color: #243b53;
-    padding-bottom: 0.25rem;
-}
+    .card-header {
+        background-color: transparent !important;
+        border-bottom: none !important;
+        font-weight: 600;
+        color: #243b53;
+    }
 
-/* Value boxes / nested card-like components */
-.value-box {
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-}
+    .card-body {
+        border: none !important;
+    }
 
-/* Sidebar */
-.sidebar {
-    background-color: #ffffff;
-    border: none !important;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
-    border-radius: 16px;
-}
+    .value-box {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
 
-/* Text */
-p, li, label {
-    color: #334e68;
-}
+    .sidebar {
+        background-color: #ffffff;
+        border: none !important;
+        box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+        border-radius: 16px;
+    }
 
-/* Buttons */
-.btn {
-    border-radius: 10px;
-}
-""")
+    p, li, label {
+        color: #334e68;
+    }
+
+    .btn {
+        border-radius: 10px;
+    }
+    """)
+)
 
 with ui.nav_panel("Overview"):
     ui.h2("Overview")
@@ -240,7 +236,6 @@ with ui.nav_panel("EDA"):
                     ax.bar(df["Fuel_Type"], df["Price_USD"])
                     ax.set_xlabel("Fuel Type")
                     ax.set_ylabel("Average Price (USD)")
-                    ax.set_title("Average Price by Fuel Type")
                     fig.tight_layout()
                     return fig
 
@@ -268,9 +263,8 @@ with ui.nav_panel("EDA"):
                     ax.bar(agg["Brand"], agg["Price_USD"])
                     ax.set_xlabel("Brand")
                     ax.set_ylabel("Average Price (USD)")
-                    ax.set_title("Average Price by Brand")
                     ax.tick_params(axis="x", rotation=45)
-                    ax.grid(True, axis="y", alpha=0.3)
+                    ax.grid(False)
 
                     fig.tight_layout()
                     return fig
@@ -303,9 +297,8 @@ with ui.nav_panel("EDA"):
 
                     ax.set_xlabel("Engine Size (CC)")
                     ax.set_ylabel("Performance Efficiency")
-                    ax.set_title("Engine Size vs. Performance Efficiency")
                     ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9)
-                    ax.grid(True, alpha=0.3)
+                    ax.grid(False)
                     fig.tight_layout()
                     return fig
 
@@ -352,9 +345,8 @@ with ui.nav_panel("EDA"):
                         )
 
                     ax.set_ylabel("Avg Performance Efficiency")
-                    ax.set_title("Average Performance Efficiency by Fuel Type")
                     ax.set_ylim(0, 1)
-                    ax.grid(True, axis="y", alpha=0.3)
+                    ax.grid(False)
                     fig.tight_layout()
                     return fig
 
@@ -390,9 +382,8 @@ with ui.nav_panel("EDA"):
 
                     ax.set_xlabel("Horsepower")
                     ax.set_ylabel("Price (USD)")
-                    ax.set_title("Horsepower vs Price")
                     ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9)
-                    ax.grid(True, alpha=0.3)
+                    ax.grid(False)
 
                     fig.tight_layout()
                     return fig
