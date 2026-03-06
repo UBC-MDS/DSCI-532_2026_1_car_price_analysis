@@ -32,6 +32,96 @@ ui.page_opts(
     page_fn=partial(page_navbar, id="page"),
 )
 
+ui.tags.style("""
+/* Overall page */
+body {
+    background-color: #f7f9fc;
+    color: #243b53;
+}
+
+/* Top navbar / header */
+.navbar {
+    background-color: #16324f !important;
+    border-bottom: none !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.navbar-brand,
+.navbar-nav .nav-link {
+    color: #f8fafc !important;
+    font-weight: 500;
+}
+
+.navbar-nav .nav-link.active,
+.navbar-nav .nav-link:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+}
+
+/* Main content spacing */
+.container-fluid {
+    padding-top: 1.25rem;
+    padding-bottom: 1.5rem;
+}
+
+/* Titles */
+h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #102a43;
+    margin-bottom: 0.25rem;
+}
+
+h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #243b53;
+    margin-bottom: 1rem;
+}
+
+/* Cards */
+.card {
+    border: none !important;
+    border-radius: 16px !important;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+    background-color: #ffffff;
+}
+
+.card-header {
+    background-color: transparent !important;
+    border-bottom: none !important;
+    font-weight: 600;
+    color: #243b53;
+    padding-bottom: 0.25rem;
+}
+
+/* Value boxes / nested card-like components */
+.value-box {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Sidebar */
+.sidebar {
+    background-color: #ffffff;
+    border: none !important;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+    border-radius: 16px;
+}
+
+/* Text */
+p, li, label {
+    color: #334e68;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 10px;
+}
+""")
+
 with ui.nav_panel("Overview"):
     ui.h2("Overview")
 
