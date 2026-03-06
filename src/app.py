@@ -1,29 +1,21 @@
+from functools import partial
 from pathlib import Path
 import os
 
 import pandas as pd
 import matplotlib.pyplot as plt
-from chatlas import ChatGithub
+import querychat
 from dotenv import load_dotenv
 from shiny import reactive
 from shiny.express import input, render, ui
+from shiny.ui import page_navbar
 
+# ── Environment & Data ──────────────────────────────────────────
 _dotenv_loaded = load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 github_model = os.getenv("GITHUB_MODEL", "gpt-4.1-mini")
 
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "global_cars_enhanced.csv"
 data = pd.read_csv(DATA_PATH)
-
-_sample_rows_md = data.head(8).to_markdown(index=False)
-_dataset_context = (
-    f"Dataset: global_cars_enhanced\\n"
-    f"Rows: {len(data)}\\n"
-    f"Columns: {', '.join(data.columns.tolist())}\\n"
-    "Column dtypes:\\n"
-    f"{data.dtypes.to_string()}\\n\\n"
-    "Sample rows:\\n"
-    f"{_sample_rows_md}"
-)
 
 brand_choices = ["All"] + sorted(data["Brand"].unique().tolist())
 body_type_choices = ["All"] + sorted(data["Body_Type"].unique().tolist())
@@ -43,10 +35,32 @@ GROUP_COLORS = {
     "Standard Fuel": "#c0392b",
 }
 
-ui.page_opts(
-    title="Car Prices",
+# ── Querychat Setup (OOP API) ──────────────────────────────────
+qc = querychat.QueryChat(
+    data,
+    "global_cars_enhanced",
+    client=f"github/{github_model}",
+    greeting=(
+        "Hello! I can help you explore the car price dataset. "
+        "Try asking things like:\n"
+        "- *Show me only hybrid vehicles*\n"
+        "- *Which brands have the highest average price?*\n"
+        "- *Filter to cars under $30,000 with efficiency score above 0.5*"
+    ),
 )
 
+# Initialize querychat server (must be at top level in Express)
+chat = qc.server()
+
+# ── Page Setup ──────────────────────────────────────────────────
+ui.page_opts(
+    title="Car Prices",
+    page_fn=partial(page_navbar, id="page"),
+)
+
+# ════════════════════════════════════════════════════════════════
+# Tab 1: Overview
+# ════════════════════════════════════════════════════════════════
 with ui.nav_panel("Overview"):
     ui.h2("Overview")
 
@@ -69,6 +83,9 @@ with ui.nav_panel("Overview"):
                 ui.tags.li("Price range: $5,000–$120,000"),
             )
 
+# ════════════════════════════════════════════════════════════════
+# Tab 2: EDA
+# ════════════════════════════════════════════════════════════════
 with ui.nav_panel("EDA"):
     ui.h2("EDA")
 
@@ -326,40 +343,125 @@ with ui.nav_panel("EDA"):
                 ui.card_header("Manufacture Year vs. Mileage")
                 ui.p("Placeholder — future chart")
 
+# ════════════════════════════════════════════════════════════════
+# Tab 3: AI Assistant (querychat)
+# ════════════════════════════════════════════════════════════════
 with ui.nav_panel("AI Assistant"):
     ui.h2("AI Assistant")
 
     with ui.layout_sidebar():
-        with ui.sidebar():
-            ui.input_text_area(
-                "ai_prompt",
-                "Ask about the dataset",
-                placeholder="Example: Which brand has the highest average price?",
-                rows=7,
-            )
-            ui.input_action_button("ai_send", "Send")
-            ui.p("The assistant uses dataset schema and sample rows as context.")
+        with ui.sidebar(width=400):
+            qc.ui()
 
+        # Dataframe output
         with ui.card():
-            ui.card_header("Assistant Response")
+            ui.card_header("Filtered Data")
 
-            @render.text
-            @reactive.event(input.ai_send)
-            def ai_response():
-                prompt = input.ai_prompt().strip()
-                if not prompt:
-                    return "Enter a prompt and click Send."
+            @render.data_frame
+            def ai_data_table():
+                return chat.df()
 
-                grounded_prompt = (
-                    "You are a data assistant for a car price dashboard. "
-                    "Answer using the provided dataset context. "
-                    "If the question cannot be answered from context, say so clearly.\\n\\n"
-                    f"{_dataset_context}\\n\\n"
-                    f"User question: {prompt}"
-                )
+        # Download button
+        with ui.card():
+            @render.download(label="Download filtered data", filename="filtered_cars.csv")
+            def download_filtered():
+                yield chat.df().to_csv(index=False)
 
-                try:
-                    response = ChatGithub(model=github_model).chat(grounded_prompt)
-                    return str(response)
-                except Exception as exc:
-                    return f"Chat request failed (model={github_model}): {exc}"
+        # 2 charts consuming querychat filtered df
+        with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
+            with ui.card():
+                ui.card_header("Engine Size vs. Efficiency (AI Filtered)")
+
+                @render.plot
+                def ai_scatter_engine():
+                    df = chat.df()
+                    fig, ax = plt.subplots(figsize=(6, 4))
+
+                    if df.empty:
+                        ax.text(0.5, 0.5, "No data for current query.",
+                                ha="center", va="center", transform=ax.transAxes)
+                        return fig
+
+                    if "Fuel_Type" not in df.columns or "Engine_CC" not in df.columns:
+                        ax.text(0.5, 0.5, "Required columns not in query result.",
+                                ha="center", va="center", transform=ax.transAxes)
+                        return fig
+
+                    for fuel, group in df.groupby("Fuel_Type"):
+                        ax.scatter(
+                            group["Engine_CC"],
+                            group["Efficiency_Score"],
+                            label=fuel,
+                            color=FUEL_COLORS.get(fuel, "#999999"),
+                            alpha=0.7,
+                            edgecolors="white",
+                            linewidth=0.5,
+                            s=50,
+                        )
+
+                    ax.set_xlabel("Engine Size (CC)")
+                    ax.set_ylabel("Performance Efficiency")
+                    ax.set_title("Engine Size vs. Efficiency")
+                    ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9)
+                    ax.grid(True, alpha=0.3)
+                    fig.tight_layout()
+                    return fig
+
+            with ui.card():
+                ui.card_header("Avg Efficiency: Hybrid vs Standard (AI Filtered)")
+
+                @render.plot
+                def ai_bar_efficiency():
+                    df = chat.df()
+                    fig, ax = plt.subplots(figsize=(6, 4))
+
+                    if df.empty:
+                        ax.text(0.5, 0.5, "No data for current query.",
+                                ha="center", va="center", transform=ax.transAxes)
+                        return fig
+
+                    if "Fuel_Type" not in df.columns or "Efficiency_Score" not in df.columns:
+                        ax.text(0.5, 0.5, "Required columns not in query result.",
+                                ha="center", va="center", transform=ax.transAxes)
+                        return fig
+
+                    df = df.copy()
+                    df["Fuel_Group"] = df["Fuel_Type"].apply(
+                        lambda x: "Hybrid" if x == "Hybrid" else "Standard Fuel"
+                    )
+                    agg = df.groupby("Fuel_Group", as_index=False)["Efficiency_Score"].mean()
+
+                    order = ["Hybrid", "Standard Fuel"]
+                    agg["Fuel_Group"] = pd.Categorical(
+                        agg["Fuel_Group"], categories=order, ordered=True
+                    )
+                    agg = agg.sort_values("Fuel_Group").dropna()
+
+                    if agg.empty:
+                        ax.text(0.5, 0.5, "No fuel group data available.",
+                                ha="center", va="center", transform=ax.transAxes)
+                        return fig
+
+                    bars = ax.bar(
+                        agg["Fuel_Group"],
+                        agg["Efficiency_Score"],
+                        color=[GROUP_COLORS.get(g, "#999999") for g in agg["Fuel_Group"]],
+                        width=0.5,
+                        edgecolor="white",
+                    )
+
+                    for bar in bars:
+                        height = bar.get_height()
+                        ax.text(
+                            bar.get_x() + bar.get_width() / 2,
+                            height + 0.01,
+                            f"{height:.2f}",
+                            ha="center", va="bottom", fontsize=10, fontweight="bold",
+                        )
+
+                    ax.set_ylabel("Avg Performance Efficiency")
+                    ax.set_title("Hybrid vs Standard Fuel Efficiency")
+                    ax.set_ylim(0, 1)
+                    ax.grid(True, axis="y", alpha=0.3)
+                    fig.tight_layout()
+                    return fig

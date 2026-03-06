@@ -4,3 +4,5 @@ matplotlib==3.10.1
 chatlas==0.1.0
 python-dotenv==1.0.0
 tabulate==0.8.10
+querychat
+duckdb
