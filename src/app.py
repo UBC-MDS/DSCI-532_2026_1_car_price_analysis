@@ -1,14 +1,30 @@
-from functools import partial
 from pathlib import Path
+import os
 
 import pandas as pd
 import matplotlib.pyplot as plt
+from chatlas import ChatGithub
+from dotenv import load_dotenv
 from shiny import reactive
 from shiny.express import input, render, ui
-from shiny.ui import page_navbar
+
+_dotenv_loaded = load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+github_model = os.getenv("GITHUB_MODEL", "gpt-4.1-mini")
 
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "global_cars_enhanced.csv"
 data = pd.read_csv(DATA_PATH)
+
+_sample_rows_md = data.head(8).to_markdown(index=False)
+_dataset_context = (
+    f"Dataset: global_cars_enhanced\\n"
+    f"Rows: {len(data)}\\n"
+    f"Columns: {', '.join(data.columns.tolist())}\\n"
+    "Column dtypes:\\n"
+    f"{data.dtypes.to_string()}\\n\\n"
+    "Sample rows:\\n"
+    f"{_sample_rows_md}"
+)
+
 brand_choices = ["All"] + sorted(data["Brand"].unique().tolist())
 body_type_choices = ["All"] + sorted(data["Body_Type"].unique().tolist())
 fuel_type_choices = ["All"] + sorted(data["Fuel_Type"].unique().tolist())
@@ -29,7 +45,6 @@ GROUP_COLORS = {
 
 ui.page_opts(
     title="Car Prices",
-    page_fn=partial(page_navbar, id="page"),
 )
 
 with ui.nav_panel("Overview"):
@@ -310,3 +325,41 @@ with ui.nav_panel("EDA"):
             with ui.card():
                 ui.card_header("Manufacture Year vs. Mileage")
                 ui.p("Placeholder — future chart")
+
+with ui.nav_panel("AI Assistant"):
+    ui.h2("AI Assistant")
+
+    with ui.layout_sidebar():
+        with ui.sidebar():
+            ui.input_text_area(
+                "ai_prompt",
+                "Ask about the dataset",
+                placeholder="Example: Which brand has the highest average price?",
+                rows=7,
+            )
+            ui.input_action_button("ai_send", "Send")
+            ui.p("The assistant uses dataset schema and sample rows as context.")
+
+        with ui.card():
+            ui.card_header("Assistant Response")
+
+            @render.text
+            @reactive.event(input.ai_send)
+            def ai_response():
+                prompt = input.ai_prompt().strip()
+                if not prompt:
+                    return "Enter a prompt and click Send."
+
+                grounded_prompt = (
+                    "You are a data assistant for a car price dashboard. "
+                    "Answer using the provided dataset context. "
+                    "If the question cannot be answered from context, say so clearly.\\n\\n"
+                    f"{_dataset_context}\\n\\n"
+                    f"User question: {prompt}"
+                )
+
+                try:
+                    response = ChatGithub(model=github_model).chat(grounded_prompt)
+                    return str(response)
+                except Exception as exc:
+                    return f"Chat request failed (model={github_model}): {exc}"
