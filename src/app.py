@@ -23,9 +23,13 @@ fuel_type_choices = sorted(data["Fuel_Type"].unique().tolist())
 price_min = int(data["Price_USD"].min())
 price_max = int(data["Price_USD"].max())
 
-SUSTAINABLE_FUEL_DEFAULTS = [fuel for fuel in ["Hybrid", "Electric"] if fuel in fuel_type_choices]
-if not SUSTAINABLE_FUEL_DEFAULTS:
-    SUSTAINABLE_FUEL_DEFAULTS = fuel_type_choices
+UBER_BODY_TYPE_DEFAULTS = [bt for bt in ["Sedan", "SUV", "Hatchback"] if bt in body_type_choices]
+UBER_FUEL_TYPE_DEFAULTS = [fuel for fuel in ["Hybrid", "Petrol", "Diesel"] if fuel in fuel_type_choices]
+if not UBER_FUEL_TYPE_DEFAULTS:
+    UBER_FUEL_TYPE_DEFAULTS = fuel_type_choices
+
+UBER_PRICE_CAP = min(60000, price_max)
+UBER_PRICE_DEFAULT_RANGE = (price_min, UBER_PRICE_CAP)
 
 FUEL_COLORS = {
     "Hybrid": "#1b6c6e",
@@ -133,7 +137,7 @@ with ui.nav_panel("EDA"):
                 "input_body_type",
                 "Body Type",
                 choices=body_type_choices,
-                selected=[],
+                selected=UBER_BODY_TYPE_DEFAULTS,
                 multiple=True,
                 options={"placeholder": "All body types"},
             )
@@ -142,14 +146,14 @@ with ui.nav_panel("EDA"):
                 "Price range (USD)",
                 min=price_min,
                 max=price_max,
-                value=(price_min, price_max),
+                value=UBER_PRICE_DEFAULT_RANGE,
                 pre="$",
             )
             ui.input_selectize(
                 "input_fuel_type",
                 "Fuel Type",
                 choices=fuel_type_choices,
-                selected=SUSTAINABLE_FUEL_DEFAULTS,
+                selected=UBER_FUEL_TYPE_DEFAULTS,
                 multiple=True,
                 options={"placeholder": "All fuel types"},
             )
@@ -200,11 +204,11 @@ with ui.nav_panel("EDA"):
         @reactive.event(input.reset_btn)
         def _reset_filters():
             ui.update_selectize("input_brand", selected=[])
-            ui.update_selectize("input_body_type", selected=[])
-            ui.update_selectize("input_fuel_type", selected=SUSTAINABLE_FUEL_DEFAULTS)
+            ui.update_selectize("input_body_type", selected=UBER_BODY_TYPE_DEFAULTS)
+            ui.update_selectize("input_fuel_type", selected=UBER_FUEL_TYPE_DEFAULTS)
             ui.update_slider(
                 "input_price_range",
-                value=(price_min, price_max),
+                value=UBER_PRICE_DEFAULT_RANGE,
             )
 
         with ui.card():
