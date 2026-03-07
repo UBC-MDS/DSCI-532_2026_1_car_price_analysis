@@ -44,6 +44,12 @@ PLOT_COLORS = {
     "fallback": "#999999",
 }
 
+AI_TEST_PROMPTS = [
+    "Show only hybrid and electric vehicles under $35,000 with efficiency score above 0.6",
+    "Compare average price by fuel type for SUV body type",
+    "Return the top 8 brands by average efficiency score",
+]
+
 
 def _as_selection(value):
     if value is None:
@@ -67,7 +73,7 @@ qc = querychat.QueryChat(
     greeting=(
         "Hello! I can help you explore the car price dataset. "
         "Try asking things like:\n"
-        "- *Show me only hybrid vehicles*\n"
+        "- *Show only hybrid and electric vehicles under $35,000 with efficiency score above 0.6*\n"
         "- *Which brands have the highest average price?*\n"
         "- *Filter to cars under $30,000 with efficiency score above 0.5*"
     ),
@@ -426,6 +432,9 @@ with ui.nav_panel("AI Assistant"):
     with ui.layout_sidebar():
         with ui.sidebar(width=400):
             qc.ui()
+            ui.hr()
+            ui.p("Prompts tested for AI visuals:")
+            ui.tags.ul(*[ui.tags.li(prompt) for prompt in AI_TEST_PROMPTS])
 
         # Dataframe output
         with ui.card():
@@ -440,6 +449,14 @@ with ui.nav_panel("AI Assistant"):
             @render.download(label="Download filtered data", filename="filtered_cars.csv")
             def download_filtered():
                 yield chat.df().to_csv(index=False)
+
+        with ui.card():
+            ui.card_header("AI query result state")
+
+            @render.text
+            def ai_filter_state_text():
+                df = chat.df()
+                return f"Rows: {len(df):,} | Columns: {len(df.columns):,}"
 
         # 2 charts consuming querychat filtered df
         with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
@@ -539,3 +556,40 @@ with ui.nav_panel("AI Assistant"):
                     ax.grid(True, axis="y", alpha=0.3)
                     fig.tight_layout()
                     return fig
+
+        with ui.card():
+            ui.card_header("Average Price by Fuel Type (AI Filtered)")
+
+            @render.plot
+            def ai_fuel_price_plot():
+                df = chat.df()
+                fig, ax = plt.subplots(figsize=(6, 4))
+
+                if df.empty:
+                    ax.text(0.5, 0.5, "No data for current query.",
+                            ha="center", va="center", transform=ax.transAxes)
+                    return fig
+
+                if "Fuel_Type" not in df.columns or "Price_USD" not in df.columns:
+                    ax.text(0.5, 0.5, "Required columns not in query result.",
+                            ha="center", va="center", transform=ax.transAxes)
+                    return fig
+
+                agg = df.groupby("Fuel_Type", as_index=False)["Price_USD"].mean().dropna()
+                if agg.empty:
+                    ax.text(0.5, 0.5, "No fuel price data available.",
+                            ha="center", va="center", transform=ax.transAxes)
+                    return fig
+
+                ax.bar(
+                    agg["Fuel_Type"],
+                    agg["Price_USD"],
+                    color=[FUEL_COLORS.get(fuel, PLOT_COLORS["fallback"]) for fuel in agg["Fuel_Type"]],
+                    edgecolor="white",
+                )
+                ax.set_xlabel("Fuel Type")
+                ax.set_ylabel("Average Price (USD)")
+                ax.set_title("Average Price by Fuel Type")
+                ax.grid(True, axis="y", alpha=0.3)
+                fig.tight_layout()
+                return fig
