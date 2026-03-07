@@ -39,6 +39,11 @@ GROUP_COLORS = {
     "Standard Fuel": "#c0392b",
 }
 
+PLOT_COLORS = {
+    "brand": "#34495e",
+    "fallback": "#999999",
+}
+
 
 def _as_selection(value):
     if value is None:
@@ -235,17 +240,23 @@ with ui.nav_panel("EDA"):
                 @render.plot
                 def fuel_eff_plot():
                     df = filtered_df().groupby("Fuel_Type", as_index=False)["Price_USD"].mean()
-                    fig, ax = plt.subplots()
+                    fig, ax = plt.subplots(figsize=(6, 4))
 
                     if df.empty:
                         ax.text(0.5, 0.5, "No data for selected filters", ha="center", va="center")
                         ax.axis("off")
                         return fig
 
-                    ax.bar(df["Fuel_Type"], df["Price_USD"])
+                    ax.bar(
+                        df["Fuel_Type"],
+                        df["Price_USD"],
+                        color=[FUEL_COLORS.get(fuel, PLOT_COLORS["fallback"]) for fuel in df["Fuel_Type"]],
+                        edgecolor="white",
+                    )
                     ax.set_xlabel("Fuel Type")
                     ax.set_ylabel("Average Price (USD)")
                     ax.set_title("Average Price by Fuel Type")
+                    ax.grid(True, axis="y", alpha=0.3)
                     fig.tight_layout()
                     return fig
 
@@ -270,7 +281,7 @@ with ui.nav_panel("EDA"):
                         .sort_values("Price_USD", ascending=False)
                     )
 
-                    ax.bar(agg["Brand"], agg["Price_USD"])
+                    ax.bar(agg["Brand"], agg["Price_USD"], color=PLOT_COLORS["brand"], edgecolor="white")
                     ax.set_xlabel("Brand")
                     ax.set_ylabel("Average Price (USD)")
                     ax.set_title("Average Price by Brand")
@@ -299,7 +310,7 @@ with ui.nav_panel("EDA"):
                             group["Engine_CC"],
                             group["Efficiency_Score"],
                             label=fuel,
-                            color=FUEL_COLORS.get(fuel, "#999999"),
+                            color=FUEL_COLORS.get(fuel, PLOT_COLORS["fallback"]),
                             alpha=0.7,
                             edgecolors="white",
                             linewidth=0.5,
@@ -386,7 +397,7 @@ with ui.nav_panel("EDA"):
                             group["Horsepower"],
                             group["Price_USD"],
                             label=fuel,
-                            color=FUEL_COLORS.get(fuel, "#999999"),
+                            color=FUEL_COLORS.get(fuel, PLOT_COLORS["fallback"]),
                             alpha=0.7,
                             edgecolors="white",
                             linewidth=0.5,
@@ -455,7 +466,7 @@ with ui.nav_panel("AI Assistant"):
                             group["Engine_CC"],
                             group["Efficiency_Score"],
                             label=fuel,
-                            color=FUEL_COLORS.get(fuel, "#999999"),
+                            color=FUEL_COLORS.get(fuel, PLOT_COLORS["fallback"]),
                             alpha=0.7,
                             edgecolors="white",
                             linewidth=0.5,
@@ -508,7 +519,7 @@ with ui.nav_panel("AI Assistant"):
                     bars = ax.bar(
                         agg["Fuel_Group"],
                         agg["Efficiency_Score"],
-                        color=[GROUP_COLORS.get(g, "#999999") for g in agg["Fuel_Group"]],
+                        color=[GROUP_COLORS.get(g, PLOT_COLORS["fallback"]) for g in agg["Fuel_Group"]],
                         width=0.5,
                         edgecolor="white",
                     )
