@@ -1,8 +1,12 @@
+## [0.3.0]
+
 ### Added
 - AI Assistant tab powered by `querychat`.
 - AI driven dataframe filtering with table output and data download option.
 - Additional visualizations that respond to AI filtered results.
 - Multi select filtering support for dashboard controls.
+- Default dashboard view shows data filtered for relevant user story.
+- Filters are now shown as cards with clear labels and consistent styling.
 
 ### Changed
 - Improved dashboard UI/UX with a consistent theme and visual hierarchy.
