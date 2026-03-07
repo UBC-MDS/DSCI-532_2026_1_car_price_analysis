@@ -181,17 +181,19 @@ with ui.nav_panel("EDA"):
             return df
 
         @reactive.calc
-        def filter_state_text():
+        def filter_state_values():
             brand_label = _selection_label(input.input_brand(), brand_choices)
             body_type_label = _selection_label(input.input_body_type(), body_type_choices)
             fuel_type_label = _selection_label(input.input_fuel_type(), fuel_type_choices)
             price_low, price_high = input.input_price_range()
             count = len(filtered_df())
-            return (
-                f"Current filters -> Brand: {brand_label} | Body Type: {body_type_label} | "
-                f"Fuel Type: {fuel_type_label} | Price: ${price_low:,} to ${price_high:,} | "
-                f"Vehicles: {count:,}"
-            )
+            return {
+                "brand": brand_label,
+                "body_type": body_type_label,
+                "fuel_type": fuel_type_label,
+                "price": f"${price_low:,} to ${price_high:,}",
+                "vehicles": f"{count:,}",
+            }
 
         @reactive.calc
         def summary_kpis():
@@ -214,9 +216,34 @@ with ui.nav_panel("EDA"):
         with ui.card():
             ui.card_header("Current filter state")
 
-            @render.text
+            @render.ui
             def current_filter_state():
-                return filter_state_text()
+                state = filter_state_values()
+
+                def pill(label, value):
+                    return ui.tags.div(
+                        ui.tags.span(label, style="font-size:0.75rem;font-weight:600;color:#4b5563;"),
+                        ui.tags.span(value, style="font-size:0.9rem;color:#111827;"),
+                        style=(
+                            "display:flex;flex-direction:column;gap:0.2rem;padding:0.6rem 0.8rem;"
+                            "border:1px solid #dbe2ea;border-radius:0.65rem;background:#f8fafc;"
+                        ),
+                    )
+
+                return ui.tags.div(
+                    ui.tags.div(
+                        pill("Brand", state["brand"]),
+                        pill("Body Type", state["body_type"]),
+                        pill("Fuel Type", state["fuel_type"]),
+                        pill("Price", state["price"]),
+                        pill("Vehicles", state["vehicles"]),
+                        style=(
+                            "display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));"
+                            "gap:0.6rem;"
+                        ),
+                    ),
+                    style="padding:0.25rem 0;",
+                )
 
         # KPI value boxes
         with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
