@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from shiny import reactive
 from shiny.express import input, render, ui
 from shiny.ui import page_navbar
+from matplotlib.ticker import FuncFormatter
 
 # ── Environment & Data ──────────────────────────────────────────
 _dotenv_loaded = load_dotenv(Path(__file__).resolve().parents[1] / ".env")
@@ -86,6 +87,11 @@ def _selection_label(selected_values, all_values):
         return "All"
     return ", ".join(selected)
 
+FIG_WIDTH = 6
+FIG_HEIGHT = 4
+
+usd_formatter = FuncFormatter(lambda x, pos: f"{int(x):,}" if pd.notnull(x) else "")
+
 # ── Querychat Setup (OOP API) ──────────────────────────────────
 qc = querychat.QueryChat(
     data,
@@ -109,13 +115,100 @@ ui.page_opts(
     page_fn=partial(page_navbar, id="page"),
 )
 
+ui.head_content(
+    ui.tags.style("""
+    body {
+        background-color: #f7f9fc;
+        color: #243b53;
+    }
+
+    .navbar {
+        background-color: #16324f !important;
+        border-bottom: none !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
+    .navbar-brand,
+    .navbar-nav .nav-link {
+        color: #f8fafc !important;
+        font-weight: 500;
+    }
+
+    .navbar-nav .nav-link.active,
+    .navbar-nav .nav-link:hover {
+        color: #ffffff !important;
+        background-color: rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+    }
+
+    .container-fluid {
+        padding-top: 1.25rem;
+        padding-bottom: 1.5rem;
+    }
+
+    h1 {
+        font-size: 2.4rem;
+        font-weight: 700;
+        color: #102a43;
+        margin-bottom: 0.25rem;
+    }
+
+    h2 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #243b53;
+        margin-bottom: 1rem;
+    }
+
+    .card {
+        border: none !important;
+        border-radius: 16px !important;
+        box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+        background-color: #ffffff;
+    }
+
+    .card-header {
+        background-color: transparent !important;
+        border-bottom: none !important;
+        font-weight: 600;
+        color: #243b53;
+    }
+
+    .card-body {
+        border: none !important;
+    }
+
+    .value-box {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+
+    .sidebar {
+        background-color: #ffffff;
+        border: none !important;
+        box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+        border-radius: 16px;
+    }
+
+    p, li, label {
+        color: #334e68;
+    }
+
+    .btn {
+        border-radius: 10px;
+    }
+    """)
+)
+
 # ════════════════════════════════════════════════════════════════
 # Tab 1: Overview
 # ════════════════════════════════════════════════════════════════
 with ui.nav_panel("Overview"):
+    ui.h1("Car Prices")
     ui.h2("Overview")
 
-    with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
+    with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
         with ui.card():
             ui.card_header("Project focus")
             ui.p("Explore car pricing patterns across brands and countries.")
@@ -263,7 +356,7 @@ with ui.nav_panel("EDA"):
                 )
 
         # KPI value boxes
-        with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
+        with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
             with ui.card():
                 ui.card_header("Vehicles in selection")
 
@@ -287,31 +380,35 @@ with ui.nav_panel("EDA"):
                         value=value,
                     )
 
-        with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
+        with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
             with ui.card():
                 ui.card_header("Average Price by Fuel Type")
 
                 @render.plot
                 def fuel_eff_plot():
                     df = filtered_df().groupby("Fuel_Type", as_index=False)["Price_USD"].mean()
-                    fig, ax = plt.subplots(figsize=(6, 4))
+                    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
+                    fig.subplots_adjust(left=0.14, right=0.96, bottom=0.20, top=0.92)
 
                     if df.empty:
                         ax.text(0.5, 0.5, "No data for selected filters", ha="center", va="center")
                         ax.axis("off")
                         return fig
 
-                    ax.bar(
-                        df["Fuel_Type"],
-                        df["Price_USD"],
-                        color=[EDA_FUEL_PRICE_COLORS[i % len(EDA_FUEL_PRICE_COLORS)] for i, _ in enumerate(df["Fuel_Type"])],
-                        edgecolor="white",
-                    )
+                    bars= ax.bar(df["Fuel_Type"], df["Price_USD"])
+                    for bar in bars:
+                         height = bar.get_height()
+                         ax.text(
+                             bar.get_x() + bar.get_width() / 2,
+                             height,
+                             f"{height:,.0f}",
+                             ha="center",
+                             va="bottom",
+                             fontsize=9,
+                         )
                     ax.set_xlabel("Fuel Type")
                     ax.set_ylabel("Average Price (USD)")
-                    ax.set_title("Average Price by Fuel Type")
-                    ax.grid(True, axis="y", alpha=0.3)
-                    fig.tight_layout()
+                    ax.yaxis.set_major_formatter(usd_formatter)
                     return fig
 
             with ui.card():
@@ -321,7 +418,8 @@ with ui.nav_panel("EDA"):
                 def plot_brand_price():
                     df = filtered_df()
 
-                    fig, ax = plt.subplots(figsize=(6, 4))
+                    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
+                    fig.subplots_adjust(left=0.14, right=0.96, bottom=0.20, top=0.92)
 
                     if df.empty:
                         ax.text(0.5, 0.5, "No data for selected filters.",
@@ -335,24 +433,35 @@ with ui.nav_panel("EDA"):
                         .sort_values("Price_USD", ascending=False)
                     )
 
-                    ax.bar(agg["Brand"], agg["Price_USD"], color=EDA_BRAND_PRICE_COLOR, edgecolor="white")
+                    bars= ax.bar(agg["Brand"], agg["Price_USD"])
+                    for bar in bars:
+                         height = bar.get_height()
+                         ax.text(
+                             bar.get_x() + bar.get_width() / 2,
+                             height,
+                             f"{height:,.0f}",
+                             ha="center",
+                             va="bottom",
+                             fontsize=8,
+                             rotation=0,
+                         )
                     ax.set_xlabel("Brand")
                     ax.set_ylabel("Average Price (USD)")
-                    ax.set_title("Average Price by Brand")
-                    ax.tick_params(axis="x", rotation=45)
-                    ax.grid(True, axis="y", alpha=0.3)
+                    ax.tick_params(axis="x", rotation=45, labelsize=8)
+                    ax.yaxis.set_major_formatter(usd_formatter)
+                    ax.grid(False)
 
-                    fig.tight_layout()
                     return fig
 
-        with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
+        with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
             with ui.card():
                 ui.card_header("Engine Size vs. Performance Efficiency")
 
                 @render.plot
                 def scatter_engine_efficiency():
                     df = filtered_df()
-                    fig, ax = plt.subplots(figsize=(6, 4))
+                    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
+                    fig.subplots_adjust(left=0.14, right=0.78, bottom=0.20, top=0.92)
 
                     if df.empty:
                         ax.text(0.5, 0.5, "No data for selected filters.",
@@ -373,10 +482,8 @@ with ui.nav_panel("EDA"):
 
                     ax.set_xlabel("Engine Size (CC)")
                     ax.set_ylabel("Performance Efficiency")
-                    ax.set_title("Engine Size vs. Performance Efficiency")
-                    ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9)
-                    ax.grid(True, alpha=0.3)
-                    fig.tight_layout()
+                    ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9, loc="upper left", bbox_to_anchor=(1.02, 1), borderaxespad=0, frameon=False,)
+                    ax.grid(False)
                     return fig
 
             with ui.card():
@@ -385,7 +492,8 @@ with ui.nav_panel("EDA"):
                 @render.plot
                 def bar_fuel_efficiency():
                     df = filtered_df()
-                    fig, ax = plt.subplots(figsize=(6, 4))
+                    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
+                    fig.subplots_adjust(left=0.14, right=0.96, bottom=0.20, top=0.92)
 
                     if df.empty:
                         ax.text(0.5, 0.5, "No data for current filters.",
@@ -422,13 +530,11 @@ with ui.nav_panel("EDA"):
                         )
 
                     ax.set_ylabel("Avg Performance Efficiency")
-                    ax.set_title("Average Performance Efficiency by Fuel Type")
                     ax.set_ylim(0, 1)
-                    ax.grid(True, axis="y", alpha=0.3)
-                    fig.tight_layout()
+                    ax.grid(False)
                     return fig
 
-        with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
+        with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
             with ui.card():
                 ui.card_header("Horsepower vs Price")
 
@@ -436,7 +542,8 @@ with ui.nav_panel("EDA"):
                 def plot_hp_price():
                     df = filtered_df()
 
-                    fig, ax = plt.subplots(figsize=(6, 4))
+                    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
+                    fig.subplots_adjust(left=0.14, right=0.78, bottom=0.20, top=0.92)
 
                     if df.empty:
                         ax.text(0.5, 0.5, "No data for selected filters.",
@@ -460,11 +567,10 @@ with ui.nav_panel("EDA"):
 
                     ax.set_xlabel("Horsepower")
                     ax.set_ylabel("Price (USD)")
-                    ax.set_title("Horsepower vs Price")
-                    ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9)
-                    ax.grid(True, alpha=0.3)
+                    ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9, loc="upper left", bbox_to_anchor=(1.02, 1), borderaxespad=0, frameon=False,)
+                    ax.grid(False)
+                    ax.yaxis.set_major_formatter(usd_formatter)
 
-                    fig.tight_layout()
                     return fig
 
             with ui.card():
