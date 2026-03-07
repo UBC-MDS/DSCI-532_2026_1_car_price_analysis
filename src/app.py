@@ -2,112 +2,72 @@ from functools import partial
 from pathlib import Path
 import os
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import querychat
 from dotenv import load_dotenv
+
+querychat = None
+try:
+    import querychat
+except ModuleNotFoundError:
+    pass
 from shiny import reactive
 from shiny.express import input, render, ui
 from shiny.ui import page_navbar
-from matplotlib.ticker import FuncFormatter
+
+from charts import (
+    ai_chart_engine_efficiency_scatter,
+    ai_chart_fuel_avg_price,
+    ai_chart_fuel_group_efficiency,
+    chart_brand_avg_price,
+    chart_engine_efficiency_scatter,
+    chart_fuel_avg_price,
+    chart_fuel_group_efficiency,
+    chart_hp_price_scatter,
+)
+from data_processing import (
+    as_selection as _as_selection,
+    build_choices,
+    build_defaults,
+    compute_kpis,
+    filter_dataframe,
+    load_data,
+    selection_label as _selection_label,
+    AI_TEST_PROMPTS,
+)
 
 # ── Environment & Data ──────────────────────────────────────────
 _dotenv_loaded = load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 github_model = os.getenv("GITHUB_MODEL", "gpt-4.1-mini")
 
-DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "global_cars_enhanced.csv"
-data = pd.read_csv(DATA_PATH)
+data = load_data()
+choices = build_choices(data)
+defaults = build_defaults(choices)
 
-brand_choices = sorted(data["Brand"].unique().tolist())
-body_type_choices = sorted(data["Body_Type"].unique().tolist())
-fuel_type_choices = sorted(data["Fuel_Type"].unique().tolist())
-price_min = int(data["Price_USD"].min())
-price_max = int(data["Price_USD"].max())
+brand_choices = choices["brand_choices"]
+body_type_choices = choices["body_type_choices"]
+fuel_type_choices = choices["fuel_type_choices"]
+price_min = choices["price_min"]
+price_max = choices["price_max"]
 
-UBER_BODY_TYPE_DEFAULTS = [bt for bt in ["Sedan", "SUV", "Hatchback"] if bt in body_type_choices]
-UBER_FUEL_TYPE_DEFAULTS = [fuel for fuel in ["Hybrid", "Petrol", "Diesel"] if fuel in fuel_type_choices]
-if not UBER_FUEL_TYPE_DEFAULTS:
-    UBER_FUEL_TYPE_DEFAULTS = fuel_type_choices
-
-UBER_PRICE_CAP = min(60000, price_max)
-UBER_PRICE_DEFAULT_RANGE = (price_min, UBER_PRICE_CAP)
-
-PLOT_FALLBACK_COLOR = "#999999"
-
-# Distinct palettes per chart so each visualization has its own visual identity.
-EDA_FUEL_PRICE_COLORS = ["#2a9d8f", "#e76f51", "#457b9d", "#f4a261"]
-EDA_BRAND_PRICE_COLOR = "#6d597a"
-EDA_ENGINE_EFFICIENCY_COLORS = {
-    "Hybrid": "#ef476f",
-    "Petrol": "#ffd166",
-    "Diesel": "#06d6a0",
-    "Electric": "#118ab2",
-}
-EDA_FUEL_GROUP_COLORS = {
-    "Hybrid": "#5f0f40",
-    "Standard Fuel": "#ff7f51",
-}
-EDA_HP_PRICE_COLORS = {
-    "Hybrid": "#9b5de5",
-    "Petrol": "#00bbf9",
-    "Diesel": "#00f5d4",
-    "Electric": "#f15bb5",
-}
-
-AI_ENGINE_EFFICIENCY_COLORS = {
-    "Hybrid": "#8338ec",
-    "Petrol": "#ffbe0b",
-    "Diesel": "#3a86ff",
-    "Electric": "#fb5607",
-}
-AI_FUEL_GROUP_COLORS = {
-    "Hybrid": "#386641",
-    "Standard Fuel": "#bc4749",
-}
-AI_FUEL_PRICE_COLORS = ["#264653", "#e9c46a", "#e76f51", "#2a9d8f"]
-
-AI_TEST_PROMPTS = [
-    "Show only hybrid and electric vehicles under $35,000 with efficiency score above 0.6",
-    "Compare average price by fuel type for SUV body type",
-    "Return the top 8 brands by average efficiency score",
-]
-
-
-def _as_selection(value):
-    if value is None:
-        return []
-    if isinstance(value, str):
-        return [value]
-    return list(value)
-
-
-def _selection_label(selected_values, all_values):
-    selected = _as_selection(selected_values)
-    if not selected or set(selected) == set(all_values):
-        return "All"
-    return ", ".join(selected)
-
-FIG_WIDTH = 6
-FIG_HEIGHT = 4
-
-usd_formatter = FuncFormatter(lambda x, pos: f"{int(x):,}" if pd.notnull(x) else "")
+UBER_BODY_TYPE_DEFAULTS = defaults["body_type_defaults"]
+UBER_FUEL_TYPE_DEFAULTS = defaults["fuel_type_defaults"]
+UBER_PRICE_DEFAULT_RANGE = defaults["price_default_range"]
 
 # ── Querychat Setup (OOP API) ──────────────────────────────────
-qc = querychat.QueryChat(
-    data,
-    "global_cars_enhanced",
-    client=f"github/{github_model}",
-    greeting=(
-        "Hello! I can help you explore the car price dataset. "
-        "Try asking things like:\n"
-        "- *Show only hybrid and electric vehicles under $35,000 with efficiency score above 0.6*\n"
-        "- *Which brands have the highest average price?*\n"
-        "- *Filter to cars under $30,000 with efficiency score above 0.5*"
-    ),
-)
-
-# Initialize querychat server (must be at top level in Express)
-chat = qc.server()
+qc = None
+if querychat is not None:
+    qc = querychat.QueryChat(
+        data,
+        "global_cars_enhanced",
+        client=f"github/{github_model}",
+        greeting=(
+            "Hello! I can help you explore the car price dataset. "
+            "Try asking things like:\n"
+            "- *Show only hybrid and electric vehicles under $35,000 with efficiency score above 0.6*\n"
+            "- *Which brands have the highest average price?*\n"
+            "- *Filter to cars under $30,000 with efficiency score above 0.5*"
+        ),
+    )
+# qc.server() is called inside the AI Assistant tab (within active Shiny session)
 
 # ── Page Setup ──────────────────────────────────────────────────
 ui.page_opts(
@@ -271,24 +231,13 @@ with ui.nav_panel("EDA"):
 
         @reactive.calc
         def filtered_df():
-            df = data.copy()
-
-            selected_brands = _as_selection(input.input_brand())
-            if selected_brands:
-                df = df[df["Brand"].isin(selected_brands)]
-
-            selected_body_types = _as_selection(input.input_body_type())
-            if selected_body_types:
-                df = df[df["Body_Type"].isin(selected_body_types)]
-
-            price_low, price_high = input.input_price_range()
-            df = df[(df["Price_USD"] >= price_low) & (df["Price_USD"] <= price_high)]
-
-            selected_fuels = _as_selection(input.input_fuel_type())
-            if selected_fuels:
-                df = df[df["Fuel_Type"].isin(selected_fuels)]
-
-            return df
+            return filter_dataframe(
+                data,
+                brands=_as_selection(input.input_brand()),
+                body_types=_as_selection(input.input_body_type()),
+                fuel_types=_as_selection(input.input_fuel_type()),
+                price_range=input.input_price_range(),
+            )
 
         @reactive.calc
         def filter_state_values():
@@ -307,10 +256,7 @@ with ui.nav_panel("EDA"):
 
         @reactive.calc
         def summary_kpis():
-            df = filtered_df()
-            count = int(len(df))
-            avg_price = float(df["Price_USD"].mean()) if count > 0 else None
-            return {"count": count, "avg_price": avg_price}
+            return compute_kpis(filtered_df())
 
         @reactive.effect
         @reactive.event(input.reset_btn)
@@ -386,72 +332,14 @@ with ui.nav_panel("EDA"):
 
                 @render.plot
                 def fuel_eff_plot():
-                    df = filtered_df().groupby("Fuel_Type", as_index=False)["Price_USD"].mean()
-                    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-                    fig.subplots_adjust(left=0.14, right=0.96, bottom=0.20, top=0.92)
-
-                    if df.empty:
-                        ax.text(0.5, 0.5, "No data for selected filters", ha="center", va="center")
-                        ax.axis("off")
-                        return fig
-
-                    bars= ax.bar(df["Fuel_Type"], df["Price_USD"])
-                    for bar in bars:
-                         height = bar.get_height()
-                         ax.text(
-                             bar.get_x() + bar.get_width() / 2,
-                             height,
-                             f"{height:,.0f}",
-                             ha="center",
-                             va="bottom",
-                             fontsize=9,
-                         )
-                    ax.set_xlabel("Fuel Type")
-                    ax.set_ylabel("Average Price (USD)")
-                    ax.yaxis.set_major_formatter(usd_formatter)
-                    return fig
+                    return chart_fuel_avg_price(filtered_df())
 
             with ui.card():
                 ui.card_header("Average Price by Brand")
 
                 @render.plot
                 def plot_brand_price():
-                    df = filtered_df()
-
-                    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-                    fig.subplots_adjust(left=0.14, right=0.96, bottom=0.20, top=0.92)
-
-                    if df.empty:
-                        ax.text(0.5, 0.5, "No data for selected filters.",
-                                ha="center", va="center", transform=ax.transAxes)
-                        ax.axis("off")
-                        return fig
-
-                    agg = (
-                        df.groupby("Brand", as_index=False)["Price_USD"]
-                        .mean()
-                        .sort_values("Price_USD", ascending=False)
-                    )
-
-                    bars= ax.bar(agg["Brand"], agg["Price_USD"])
-                    for bar in bars:
-                         height = bar.get_height()
-                         ax.text(
-                             bar.get_x() + bar.get_width() / 2,
-                             height,
-                             f"{height:,.0f}",
-                             ha="center",
-                             va="bottom",
-                             fontsize=8,
-                             rotation=0,
-                         )
-                    ax.set_xlabel("Brand")
-                    ax.set_ylabel("Average Price (USD)")
-                    ax.tick_params(axis="x", rotation=45, labelsize=8)
-                    ax.yaxis.set_major_formatter(usd_formatter)
-                    ax.grid(False)
-
-                    return fig
+                    return chart_brand_avg_price(filtered_df())
 
         with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
             with ui.card():
@@ -459,80 +347,14 @@ with ui.nav_panel("EDA"):
 
                 @render.plot
                 def scatter_engine_efficiency():
-                    df = filtered_df()
-                    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-                    fig.subplots_adjust(left=0.14, right=0.78, bottom=0.20, top=0.92)
-
-                    if df.empty:
-                        ax.text(0.5, 0.5, "No data for selected filters.",
-                                ha="center", va="center", transform=ax.transAxes)
-                        return fig
-
-                    for fuel, group in df.groupby("Fuel_Type"):
-                        ax.scatter(
-                            group["Engine_CC"],
-                            group["Efficiency_Score"],
-                            label=fuel,
-                            color=EDA_ENGINE_EFFICIENCY_COLORS.get(fuel, PLOT_FALLBACK_COLOR),
-                            alpha=0.7,
-                            edgecolors="white",
-                            linewidth=0.5,
-                            s=50,
-                        )
-
-                    ax.set_xlabel("Engine Size (CC)")
-                    ax.set_ylabel("Performance Efficiency")
-                    ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9, loc="upper left", bbox_to_anchor=(1.02, 1), borderaxespad=0, frameon=False,)
-                    ax.grid(False)
-                    return fig
+                    return chart_engine_efficiency_scatter(filtered_df())
 
             with ui.card():
                 ui.card_header("Average Performance Efficiency by Fuel Type")
 
                 @render.plot
                 def bar_fuel_efficiency():
-                    df = filtered_df()
-                    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-                    fig.subplots_adjust(left=0.14, right=0.96, bottom=0.20, top=0.92)
-
-                    if df.empty:
-                        ax.text(0.5, 0.5, "No data for current filters.",
-                                ha="center", va="center", transform=ax.transAxes)
-                        return fig
-
-                    df = df.copy()
-                    df["Fuel_Group"] = df["Fuel_Type"].apply(
-                        lambda x: "Hybrid" if x == "Hybrid" else "Standard Fuel"
-                    )
-                    agg = df.groupby("Fuel_Group", as_index=False)["Efficiency_Score"].mean()
-
-                    order = ["Hybrid", "Standard Fuel"]
-                    agg["Fuel_Group"] = pd.Categorical(
-                        agg["Fuel_Group"], categories=order, ordered=True
-                    )
-                    agg = agg.sort_values("Fuel_Group")
-
-                    bars = ax.bar(
-                        agg["Fuel_Group"],
-                        agg["Efficiency_Score"],
-                        color=[EDA_FUEL_GROUP_COLORS.get(g, PLOT_FALLBACK_COLOR) for g in agg["Fuel_Group"]],
-                        width=0.5,
-                        edgecolor="white",
-                    )
-
-                    for bar in bars:
-                        height = bar.get_height()
-                        ax.text(
-                            bar.get_x() + bar.get_width() / 2,
-                            height + 0.01,
-                            f"{height:.2f}",
-                            ha="center", va="bottom", fontsize=10, fontweight="bold",
-                        )
-
-                    ax.set_ylabel("Avg Performance Efficiency")
-                    ax.set_ylim(0, 1)
-                    ax.grid(False)
-                    return fig
+                    return chart_fuel_group_efficiency(filtered_df())
 
         with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
             with ui.card():
@@ -540,38 +362,7 @@ with ui.nav_panel("EDA"):
 
                 @render.plot
                 def plot_hp_price():
-                    df = filtered_df()
-
-                    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-                    fig.subplots_adjust(left=0.14, right=0.78, bottom=0.20, top=0.92)
-
-                    if df.empty:
-                        ax.text(0.5, 0.5, "No data for selected filters.",
-                            ha="center", va="center", transform=ax.transAxes)
-                        ax.axis("off")
-                        return fig
-
-                    df = df.dropna(subset=["Horsepower", "Price_USD"])
-
-                    for fuel, group in df.groupby("Fuel_Type"):
-                        ax.scatter(
-                            group["Horsepower"],
-                            group["Price_USD"],
-                            label=fuel,
-                            color=EDA_HP_PRICE_COLORS.get(fuel, PLOT_FALLBACK_COLOR),
-                            alpha=0.7,
-                            edgecolors="white",
-                            linewidth=0.5,
-                            s=50,
-                        )
-
-                    ax.set_xlabel("Horsepower")
-                    ax.set_ylabel("Price (USD)")
-                    ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9, loc="upper left", bbox_to_anchor=(1.02, 1), borderaxespad=0, frameon=False,)
-                    ax.grid(False)
-                    ax.yaxis.set_major_formatter(usd_formatter)
-
-                    return fig
+                    return chart_hp_price_scatter(filtered_df())
 
             with ui.card():
                 ui.card_header("Manufacture Year vs. Mileage")
@@ -583,34 +374,41 @@ with ui.nav_panel("EDA"):
 with ui.nav_panel("AI Assistant"):
     ui.h2("AI Assistant")
 
-    with ui.layout_sidebar():
-        with ui.sidebar(width=400):
-            qc.ui()
-            ui.hr()
-            ui.p("Prompts tested for AI visuals:")
-            ui.tags.ul(*[ui.tags.li(prompt) for prompt in AI_TEST_PROMPTS])
+    if qc is None:
+        ui.p("Install the querychat package to enable the AI Assistant (e.g. conda env: car_price_analysis_env).")
+    else:
+        @reactive.calc
+        def chat():
+            return qc.server()
 
-        # Dataframe output
-        with ui.card():
-            ui.card_header("Filtered Data")
+        with ui.layout_sidebar():
+            with ui.sidebar(width=400):
+                qc.ui()
+                ui.hr()
+                ui.p("Prompts tested for AI visuals:")
+                ui.tags.ul(*[ui.tags.li(prompt) for prompt in AI_TEST_PROMPTS])
 
-            @render.data_frame
-            def ai_data_table():
-                return chat.df()
+            # Dataframe output
+            with ui.card():
+                ui.card_header("Filtered Data")
 
-        # Download button
-        with ui.card():
-            @render.download(label="Download filtered data", filename="filtered_cars.csv")
-            def download_filtered():
-                yield chat.df().to_csv(index=False)
+                @render.data_frame
+                def ai_data_table():
+                    return chat().df()
 
-        with ui.card():
-            ui.card_header("AI query result state")
+            # Download button
+            with ui.card():
+                @render.download(label="Download filtered data", filename="filtered_cars.csv")
+                def download_filtered():
+                    yield chat().df().to_csv(index=False)
 
-            @render.text
-            def ai_filter_state_text():
-                df = chat.df()
-                return f"Rows: {len(df):,} | Columns: {len(df.columns):,}"
+            with ui.card():
+                ui.card_header("AI query result state")
+
+                @render.text
+                def ai_filter_state_text():
+                    df = chat().df()
+                    return f"Rows: {len(df):,} | Columns: {len(df.columns):,}"
 
         # 2 charts consuming querychat filtered df
         with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
@@ -619,131 +417,18 @@ with ui.nav_panel("AI Assistant"):
 
                 @render.plot
                 def ai_scatter_engine():
-                    df = chat.df()
-                    fig, ax = plt.subplots(figsize=(6, 4))
-
-                    if df.empty:
-                        ax.text(0.5, 0.5, "No data for current query.",
-                                ha="center", va="center", transform=ax.transAxes)
-                        return fig
-
-                    if "Fuel_Type" not in df.columns or "Engine_CC" not in df.columns:
-                        ax.text(0.5, 0.5, "Required columns not in query result.",
-                                ha="center", va="center", transform=ax.transAxes)
-                        return fig
-
-                    for fuel, group in df.groupby("Fuel_Type"):
-                        ax.scatter(
-                            group["Engine_CC"],
-                            group["Efficiency_Score"],
-                            label=fuel,
-                            color=AI_ENGINE_EFFICIENCY_COLORS.get(fuel, PLOT_FALLBACK_COLOR),
-                            alpha=0.7,
-                            edgecolors="white",
-                            linewidth=0.5,
-                            s=50,
-                        )
-
-                    ax.set_xlabel("Engine Size (CC)")
-                    ax.set_ylabel("Performance Efficiency")
-                    ax.set_title("Engine Size vs. Efficiency")
-                    ax.legend(title="Fuel Type", fontsize=8, title_fontsize=9)
-                    ax.grid(True, alpha=0.3)
-                    fig.tight_layout()
-                    return fig
+                    return ai_chart_engine_efficiency_scatter(chat().df())
 
             with ui.card():
                 ui.card_header("Avg Efficiency: Hybrid vs Standard (AI Filtered)")
 
                 @render.plot
                 def ai_bar_efficiency():
-                    df = chat.df()
-                    fig, ax = plt.subplots(figsize=(6, 4))
-
-                    if df.empty:
-                        ax.text(0.5, 0.5, "No data for current query.",
-                                ha="center", va="center", transform=ax.transAxes)
-                        return fig
-
-                    if "Fuel_Type" not in df.columns or "Efficiency_Score" not in df.columns:
-                        ax.text(0.5, 0.5, "Required columns not in query result.",
-                                ha="center", va="center", transform=ax.transAxes)
-                        return fig
-
-                    df = df.copy()
-                    df["Fuel_Group"] = df["Fuel_Type"].apply(
-                        lambda x: "Hybrid" if x == "Hybrid" else "Standard Fuel"
-                    )
-                    agg = df.groupby("Fuel_Group", as_index=False)["Efficiency_Score"].mean()
-
-                    order = ["Hybrid", "Standard Fuel"]
-                    agg["Fuel_Group"] = pd.Categorical(
-                        agg["Fuel_Group"], categories=order, ordered=True
-                    )
-                    agg = agg.sort_values("Fuel_Group").dropna()
-
-                    if agg.empty:
-                        ax.text(0.5, 0.5, "No fuel group data available.",
-                                ha="center", va="center", transform=ax.transAxes)
-                        return fig
-
-                    bars = ax.bar(
-                        agg["Fuel_Group"],
-                        agg["Efficiency_Score"],
-                        color=[AI_FUEL_GROUP_COLORS.get(g, PLOT_FALLBACK_COLOR) for g in agg["Fuel_Group"]],
-                        width=0.5,
-                        edgecolor="white",
-                    )
-
-                    for bar in bars:
-                        height = bar.get_height()
-                        ax.text(
-                            bar.get_x() + bar.get_width() / 2,
-                            height + 0.01,
-                            f"{height:.2f}",
-                            ha="center", va="bottom", fontsize=10, fontweight="bold",
-                        )
-
-                    ax.set_ylabel("Avg Performance Efficiency")
-                    ax.set_title("Hybrid vs Standard Fuel Efficiency")
-                    ax.set_ylim(0, 1)
-                    ax.grid(True, axis="y", alpha=0.3)
-                    fig.tight_layout()
-                    return fig
+                    return ai_chart_fuel_group_efficiency(chat().df())
 
         with ui.card():
             ui.card_header("Average Price by Fuel Type (AI Filtered)")
 
             @render.plot
             def ai_fuel_price_plot():
-                df = chat.df()
-                fig, ax = plt.subplots(figsize=(6, 4))
-
-                if df.empty:
-                    ax.text(0.5, 0.5, "No data for current query.",
-                            ha="center", va="center", transform=ax.transAxes)
-                    return fig
-
-                if "Fuel_Type" not in df.columns or "Price_USD" not in df.columns:
-                    ax.text(0.5, 0.5, "Required columns not in query result.",
-                            ha="center", va="center", transform=ax.transAxes)
-                    return fig
-
-                agg = df.groupby("Fuel_Type", as_index=False)["Price_USD"].mean().dropna()
-                if agg.empty:
-                    ax.text(0.5, 0.5, "No fuel price data available.",
-                            ha="center", va="center", transform=ax.transAxes)
-                    return fig
-
-                ax.bar(
-                    agg["Fuel_Type"],
-                    agg["Price_USD"],
-                    color=[AI_FUEL_PRICE_COLORS[i % len(AI_FUEL_PRICE_COLORS)] for i, _ in enumerate(agg["Fuel_Type"])],
-                    edgecolor="white",
-                )
-                ax.set_xlabel("Fuel Type")
-                ax.set_ylabel("Average Price (USD)")
-                ax.set_title("Average Price by Fuel Type")
-                ax.grid(True, axis="y", alpha=0.3)
-                fig.tight_layout()
-                return fig
+                return ai_chart_fuel_avg_price(chat().df())
