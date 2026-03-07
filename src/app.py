@@ -17,11 +17,15 @@ github_model = os.getenv("GITHUB_MODEL", "gpt-4.1-mini")
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "global_cars_enhanced.csv"
 data = pd.read_csv(DATA_PATH)
 
-brand_choices = ["All"] + sorted(data["Brand"].unique().tolist())
-body_type_choices = ["All"] + sorted(data["Body_Type"].unique().tolist())
-fuel_type_choices = ["All"] + sorted(data["Fuel_Type"].unique().tolist())
+brand_choices = sorted(data["Brand"].unique().tolist())
+body_type_choices = sorted(data["Body_Type"].unique().tolist())
+fuel_type_choices = sorted(data["Fuel_Type"].unique().tolist())
 price_min = int(data["Price_USD"].min())
 price_max = int(data["Price_USD"].max())
+
+SUSTAINABLE_FUEL_DEFAULTS = [fuel for fuel in ["Hybrid", "Electric"] if fuel in fuel_type_choices]
+if not SUSTAINABLE_FUEL_DEFAULTS:
+    SUSTAINABLE_FUEL_DEFAULTS = fuel_type_choices
 
 FUEL_COLORS = {
     "Hybrid": "#1b6c6e",
@@ -34,6 +38,21 @@ GROUP_COLORS = {
     "Hybrid": "#1b6c6e",
     "Standard Fuel": "#c0392b",
 }
+
+
+def _as_selection(value):
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return list(value)
+
+
+def _selection_label(selected_values, all_values):
+    selected = _as_selection(selected_values)
+    if not selected or set(selected) == set(all_values):
+        return "All"
+    return ", ".join(selected)
 
 # ── Querychat Setup (OOP API) ──────────────────────────────────
 qc = querychat.QueryChat(
@@ -91,8 +110,22 @@ with ui.nav_panel("EDA"):
 
     with ui.layout_sidebar():
         with ui.sidebar():
-            ui.input_selectize("input_brand", "Brand", choices=brand_choices, selected="All")
-            ui.input_selectize("input_body_type", "Body Type", choices=body_type_choices, selected="All")
+            ui.input_selectize(
+                "input_brand",
+                "Brand",
+                choices=brand_choices,
+                selected=[],
+                multiple=True,
+                options={"placeholder": "All brands"},
+            )
+            ui.input_selectize(
+                "input_body_type",
+                "Body Type",
+                choices=body_type_choices,
+                selected=[],
+                multiple=True,
+                options={"placeholder": "All body types"},
+            )
             ui.input_slider(
                 "input_price_range",
                 "Price range (USD)",
@@ -101,26 +134,49 @@ with ui.nav_panel("EDA"):
                 value=(price_min, price_max),
                 pre="$",
             )
-            ui.input_selectize("input_fuel_type", "Fuel Type", choices=fuel_type_choices, selected="All")
+            ui.input_selectize(
+                "input_fuel_type",
+                "Fuel Type",
+                choices=fuel_type_choices,
+                selected=SUSTAINABLE_FUEL_DEFAULTS,
+                multiple=True,
+                options={"placeholder": "All fuel types"},
+            )
             ui.input_action_button("reset_btn", "Reset Filters")
 
         @reactive.calc
         def filtered_df():
             df = data.copy()
 
-            if input.input_brand() != "All":
-                df = df[df["Brand"] == input.input_brand()]
+            selected_brands = _as_selection(input.input_brand())
+            if selected_brands:
+                df = df[df["Brand"].isin(selected_brands)]
 
-            if input.input_body_type() != "All":
-                df = df[df["Body_Type"] == input.input_body_type()]
+            selected_body_types = _as_selection(input.input_body_type())
+            if selected_body_types:
+                df = df[df["Body_Type"].isin(selected_body_types)]
 
             price_low, price_high = input.input_price_range()
             df = df[(df["Price_USD"] >= price_low) & (df["Price_USD"] <= price_high)]
 
-            if input.input_fuel_type() != "All":
-                df = df[df["Fuel_Type"] == input.input_fuel_type()]
+            selected_fuels = _as_selection(input.input_fuel_type())
+            if selected_fuels:
+                df = df[df["Fuel_Type"].isin(selected_fuels)]
 
             return df
+
+        @reactive.calc
+        def filter_state_text():
+            brand_label = _selection_label(input.input_brand(), brand_choices)
+            body_type_label = _selection_label(input.input_body_type(), body_type_choices)
+            fuel_type_label = _selection_label(input.input_fuel_type(), fuel_type_choices)
+            price_low, price_high = input.input_price_range()
+            count = len(filtered_df())
+            return (
+                f"Current filters -> Brand: {brand_label} | Body Type: {body_type_label} | "
+                f"Fuel Type: {fuel_type_label} | Price: ${price_low:,} to ${price_high:,} | "
+                f"Vehicles: {count:,}"
+            )
 
         @reactive.calc
         def summary_kpis():
@@ -132,13 +188,20 @@ with ui.nav_panel("EDA"):
         @reactive.effect
         @reactive.event(input.reset_btn)
         def _reset_filters():
-            ui.update_selectize("input_brand", selected="All")
-            ui.update_selectize("input_body_type", selected="All")
-            ui.update_selectize("input_fuel_type", selected="All")
+            ui.update_selectize("input_brand", selected=[])
+            ui.update_selectize("input_body_type", selected=[])
+            ui.update_selectize("input_fuel_type", selected=SUSTAINABLE_FUEL_DEFAULTS)
             ui.update_slider(
                 "input_price_range",
                 value=(price_min, price_max),
             )
+
+        with ui.card():
+            ui.card_header("Current filter state")
+
+            @render.text
+            def current_filter_state():
+                return filter_state_text()
 
         # KPI value boxes
         with ui.layout_columns(col_widths=(6, 6), gap="1rem"):
