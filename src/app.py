@@ -28,6 +28,8 @@ from data_processing import (
     build_choices,
     build_defaults,
     compute_kpis,
+    CURRENCY_RATES,
+    CURRENCY_SYMBOLS,
     filter_dataframe,
     load_data,
     selection_label as _selection_label,
@@ -52,7 +54,7 @@ UBER_BODY_TYPE_DEFAULTS = defaults["body_type_defaults"]
 UBER_FUEL_TYPE_DEFAULTS = defaults["fuel_type_defaults"]
 UBER_PRICE_DEFAULT_RANGE = defaults["price_default_range"]
 
-# ── Querychat Setup (OOP API) ──────────────────────────────────
+
 qc = None
 if querychat is not None:
     qc = querychat.QueryChat(
@@ -179,17 +181,34 @@ with ui.nav_panel("Overview"):
 
         with ui.card():
             ui.card_header("Dataset quick stats")
-            ui.tags.ul(
-                ui.tags.li("Records: 300"),
-                ui.tags.li("Brands: 10"),
-                ui.tags.li("Countries: 6"),
-                ui.tags.li("Years: 2005–2025"),
-                ui.tags.li("Price range: $5,000–$120,000"),
+            ui.p(
+                "Price range uses display currency from EDA tab. Rates are approximate.",
+                style="font-size:0.8rem;color:#6b7280;",
             )
 
-# ════════════════════════════════════════════════════════════════
-# Tab 2: EDA
-# ════════════════════════════════════════════════════════════════
+            @render.ui
+            def overview_dataset_stats():
+                n_records = len(data)
+                n_brands = data["Brand"].nunique()
+                n_countries = data["Manufacturing_Country"].nunique()
+                year_min = int(data["Manufacture_Year"].min())
+                year_max = int(data["Manufacture_Year"].max())
+                p_min = int(data["Price_USD"].min())
+                p_max = int(data["Price_USD"].max())
+                currency = input.input_currency()
+                rate = CURRENCY_RATES[currency]
+                sym = CURRENCY_SYMBOLS[currency]
+                p_min_disp = int(p_min * rate)
+                p_max_disp = int(p_max * rate)
+                return ui.tags.ul(
+                    ui.tags.li(f"Records: {n_records:,}"),
+                    ui.tags.li(f"Brands: {n_brands}"),
+                    ui.tags.li(f"Countries: {n_countries}"),
+                    ui.tags.li(f"Years: {year_min}–{year_max}"),
+                    ui.tags.li(f"Price range: {sym}{p_min_disp:,}–{sym}{p_max_disp:,}"),
+                )
+
+
 with ui.nav_panel("EDA"):
     ui.h2("EDA")
 
@@ -227,6 +246,13 @@ with ui.nav_panel("EDA"):
                 multiple=True,
                 options={"placeholder": "All fuel types"},
             )
+            ui.input_radio_buttons(
+                "input_currency",
+                "Display currency",
+                choices={"USD": "USD", "CAD": "CAD", "EUR": "EUR"},
+                selected="USD",
+            )
+            ui.p("Rates are approximate.", class_="text-muted", style="font-size:0.85rem;")
             ui.input_action_button("reset_btn", "Reset Filters")
 
         @reactive.calc
@@ -245,18 +271,23 @@ with ui.nav_panel("EDA"):
             body_type_label = _selection_label(input.input_body_type(), body_type_choices)
             fuel_type_label = _selection_label(input.input_fuel_type(), fuel_type_choices)
             price_low, price_high = input.input_price_range()
+            currency = input.input_currency()
+            rate = CURRENCY_RATES[currency]
+            sym = CURRENCY_SYMBOLS[currency]
             count = len(filtered_df())
             return {
                 "brand": brand_label,
                 "body_type": body_type_label,
                 "fuel_type": fuel_type_label,
-                "price": f"${price_low:,} to ${price_high:,}",
+                "price": f"{sym}{price_low * rate:,.0f} to {sym}{price_high * rate:,.0f}",
                 "vehicles": f"{count:,}",
             }
 
         @reactive.calc
         def summary_kpis():
-            return compute_kpis(filtered_df())
+            currency = input.input_currency()
+            rate = CURRENCY_RATES[currency]
+            return compute_kpis(filtered_df(), currency_rate=rate)
 
         @reactive.effect
         @reactive.event(input.reset_btn)
@@ -320,9 +351,10 @@ with ui.nav_panel("EDA"):
                 @render.ui
                 def value_box_avg_price():
                     k = summary_kpis()
-                    value = "—" if k["avg_price"] is None else f"${k['avg_price']:,.0f}"
+                    sym = CURRENCY_SYMBOLS[input.input_currency()]
+                    value = "—" if k["avg_price"] is None else f"{sym}{k['avg_price']:,.0f}"
                     return ui.value_box(
-                        title="Avg Price (USD)",
+                        title=f"Avg Price ({input.input_currency()})",
                         value=value,
                     )
 
@@ -332,14 +364,22 @@ with ui.nav_panel("EDA"):
 
                 @render.plot
                 def fuel_eff_plot():
-                    return chart_fuel_avg_price(filtered_df())
+                    return chart_fuel_avg_price(
+                        filtered_df(),
+                        currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
+                        currency_rate=CURRENCY_RATES[input.input_currency()],
+                    )
 
             with ui.card():
                 ui.card_header("Average Price by Brand")
 
                 @render.plot
                 def plot_brand_price():
-                    return chart_brand_avg_price(filtered_df())
+                    return chart_brand_avg_price(
+                        filtered_df(),
+                        currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
+                        currency_rate=CURRENCY_RATES[input.input_currency()],
+                    )
 
         with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
             with ui.card():
@@ -362,15 +402,17 @@ with ui.nav_panel("EDA"):
 
                 @render.plot
                 def plot_hp_price():
-                    return chart_hp_price_scatter(filtered_df())
+                    return chart_hp_price_scatter(
+                        filtered_df(),
+                        currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
+                        currency_rate=CURRENCY_RATES[input.input_currency()],
+                    )
 
             with ui.card():
                 ui.card_header("Manufacture Year vs. Mileage")
                 ui.p("Placeholder — future chart")
 
-# ════════════════════════════════════════════════════════════════
-# Tab 3: AI Assistant (querychat)
-# ════════════════════════════════════════════════════════════════
+
 with ui.nav_panel("AI Assistant"):
     ui.h2("AI Assistant")
 
@@ -431,4 +473,8 @@ with ui.nav_panel("AI Assistant"):
 
             @render.plot
             def ai_fuel_price_plot():
-                return ai_chart_fuel_avg_price(chat().df())
+                return ai_chart_fuel_avg_price(
+                    chat().df(),
+                    currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
+                    currency_rate=CURRENCY_RATES[input.input_currency()],
+                )
