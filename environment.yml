@@ -12,3 +12,6 @@ dependencies:
   - pip:
     - seaborn==0.13.2
     - shiny
+    - python-dotenv
+    - chatlas
+    - tabulate
