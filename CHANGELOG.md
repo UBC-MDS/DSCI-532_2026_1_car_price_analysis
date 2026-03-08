@@ -7,6 +7,11 @@
 - Multi select filtering support for dashboard controls.
 - Default dashboard view shows data filtered for relevant user story.
 - Filters are now shown as cards with clear labels and consistent styling.
+- Currency selector (USD / CAD / EUR) in EDA sidebar with approximate conversion; prices and value boxes in Overview and EDA charts use selected currency and symbol.
+- Modular structure: data logic, chart logic , app using Shiny `@render` / `@reactive`.
+- Project docs: `CONTRIBUTING.md` (module ownership, branch naming, PR rules, reviewer rotation) and `CODEOWNERS` for review assignments.
+- tests added for edge-case and correctness (empty DataFrame, nulls, type checks, filter correctness, `load_data`, `build_choices`, `build_defaults`, `filter_dataframe`, `compute_kpis`, `as_selection`, `selection_label`).
+- smoke tests ensuring all EDA and AI chart functions return valid matplotlib Figure objects.
 
 ### Changed
 - Improved dashboard UI/UX with a consistent theme and visual hierarchy.
@@ -14,11 +19,13 @@
 - Standardized chart sizing and layout across the dashboard.
 - Moved scatter plot legends outside of plots to improve readability.
 - Added value labels above bar charts for easier interpretation.
-- Improved price formatting using comma-separated USD values.
+- Improved price formatting using comma-separated USD values (and currency-aware formatting when CAD/EUR selected).
+- Overview “Dataset quick stats” made dynamic and currency-aware.
 
 ### Fixed
 - Inconsistent plot sizing between chart panels.
 - Redundant chart titles between card headers and plot titles.
+- Fixes for publishing and running the app on Posit Connect.
 
 ### Known Issues
 - Scatter plots currently use static matplotlib rendering and do not yet support hover tooltips.
