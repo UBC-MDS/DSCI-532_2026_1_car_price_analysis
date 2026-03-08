@@ -377,9 +377,7 @@ with ui.nav_panel("AI Assistant"):
     if qc is None:
         ui.p("Install the querychat package to enable the AI Assistant (e.g. conda env: car_price_analysis_env).")
     else:
-        @reactive.calc
-        def chat():
-            return qc.server()
+        chat = qc.server()
 
         with ui.layout_sidebar():
             with ui.sidebar(width=400):
@@ -394,20 +392,20 @@ with ui.nav_panel("AI Assistant"):
 
                 @render.data_frame
                 def ai_data_table():
-                    return chat().df()
+                    return chat.df()
 
             # Download button
             with ui.card():
                 @render.download(label="Download filtered data", filename="filtered_cars.csv")
                 def download_filtered():
-                    yield chat().df().to_csv(index=False)
+                    yield chat.df().to_csv(index=False)
 
             with ui.card():
                 ui.card_header("AI query result state")
 
                 @render.text
                 def ai_filter_state_text():
-                    df = chat().df()
+                    df = chat.df()
                     return f"Rows: {len(df):,} | Columns: {len(df.columns):,}"
 
         # 2 charts consuming querychat filtered df
@@ -417,18 +415,18 @@ with ui.nav_panel("AI Assistant"):
 
                 @render.plot
                 def ai_scatter_engine():
-                    return ai_chart_engine_efficiency_scatter(chat().df())
+                    return ai_chart_engine_efficiency_scatter(chat.df())
 
             with ui.card():
                 ui.card_header("Avg Efficiency: Hybrid vs Standard (AI Filtered)")
 
                 @render.plot
                 def ai_bar_efficiency():
-                    return ai_chart_fuel_group_efficiency(chat().df())
+                    return ai_chart_fuel_group_efficiency(chat.df())
 
         with ui.card():
             ui.card_header("Average Price by Fuel Type (AI Filtered)")
 
             @render.plot
             def ai_fuel_price_plot():
-                return ai_chart_fuel_avg_price(chat().df())
+                return ai_chart_fuel_avg_price(chat.df())
