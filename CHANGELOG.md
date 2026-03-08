@@ -1,3 +1,33 @@
+## [0.3.0]
+
+### Added
+- AI Assistant tab powered by `querychat`.
+- AI driven dataframe filtering with table output and data download option.
+- Additional visualizations that respond to AI filtered results.
+- Multi select filtering support for dashboard controls.
+- Default dashboard view shows data filtered for relevant user story.
+- Filters are now shown as cards with clear labels and consistent styling.
+
+### Changed
+- Improved dashboard UI/UX with a consistent theme and visual hierarchy.
+- Added navigation header background to better separate page sections.
+- Standardized chart sizing and layout across the dashboard.
+- Moved scatter plot legends outside of plots to improve readability.
+- Added value labels above bar charts for easier interpretation.
+- Improved price formatting using comma-separated USD values.
+
+### Fixed
+- Inconsistent plot sizing between chart panels.
+- Redundant chart titles between card headers and plot titles.
+
+### Known Issues
+- Scatter plots currently use static matplotlib rendering and do not yet support hover tooltips.
+
+### Reflection
+- The addition of natural language filtering enables users to explore subsets of the dataset dynamically without relying only on manual filters.
+- UI improvements were implemented to improve readability, layout consistency, and overall usability of the dashboard.
+- The team also continued improving project structure and collaboration practices to support upcoming milestones.
+
 ## [0.2.0]
 
 ### Added
