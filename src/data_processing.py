@@ -112,6 +112,16 @@ AI_TEST_PROMPTS = [
     "Return the top 8 brands by average efficiency score",
 ]
 
+# ── Currency Conversion (approximate rates from USD) ─────────────────
+CURRENCY_RATES = {"USD": 1.0, "CAD": 1.35, "EUR": 0.92}
+CURRENCY_SYMBOLS = {"USD": "$", "CAD": "C$", "EUR": "€"}
+
+
+def make_currency_formatter(symbol: str):
+    """Return a FuncFormatter for axis labels with the given currency symbol."""
+    return FuncFormatter(lambda x, pos: f"{symbol}{int(x):,}" if pd.notnull(x) else "")
+
+
 # ── Shared Formatter ──────────────────────────────────────────────
 FIG_WIDTH = 6
 FIG_HEIGHT = 4
@@ -174,8 +184,8 @@ def filter_dataframe(
 
 
 # ── KPI Summary ───────────────────────────────────────────────────
-def compute_kpis(df: pd.DataFrame) -> dict:
-    """Return count and avg_price KPIs for *df*."""
+def compute_kpis(df: pd.DataFrame, currency_rate: float = 1.0) -> dict:
+    """Return count and avg_price KPIs for *df*. avg_price is converted by currency_rate."""
     count = int(len(df))
-    avg_price = float(df["Price_USD"].mean()) if count > 0 else None
+    avg_price = float(df["Price_USD"].mean()) * currency_rate if count > 0 else None
     return {"count": count, "avg_price": avg_price}

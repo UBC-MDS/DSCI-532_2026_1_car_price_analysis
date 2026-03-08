@@ -17,6 +17,7 @@ from data_processing import (
     EDA_HP_PRICE_COLORS,
     FIG_HEIGHT,
     FIG_WIDTH,
+    make_currency_formatter,
     PLOT_FALLBACK_COLOR,
     usd_formatter,
 )
@@ -44,9 +45,12 @@ def _add_fuel_group(df: pd.DataFrame) -> pd.DataFrame:
 # EDA Charts
 # ════════════════════════════════════════════════════════════════
 
-def chart_fuel_avg_price(df: pd.DataFrame) -> plt.Figure:
+def chart_fuel_avg_price(
+    df: pd.DataFrame, currency_sym: str = "$", currency_rate: float = 1.0
+) -> plt.Figure:
     """Bar chart — average Price_USD by Fuel_Type (EDA tab)."""
     agg = df.groupby("Fuel_Type", as_index=False)["Price_USD"].mean()
+    agg["Price_display"] = agg["Price_USD"] * currency_rate
 
     if agg.empty:
         return _empty_fig()
@@ -54,26 +58,28 @@ def chart_fuel_avg_price(df: pd.DataFrame) -> plt.Figure:
     fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
     fig.subplots_adjust(left=0.14, right=0.96, bottom=0.20, top=0.92)
 
-    bars = ax.bar(agg["Fuel_Type"], agg["Price_USD"])
+    bars = ax.bar(agg["Fuel_Type"], agg["Price_display"])
     for bar in bars:
         height = bar.get_height()
         ax.text(
             bar.get_x() + bar.get_width() / 2,
             height,
-            f"{height:,.0f}",
+            f"{currency_sym}{height:,.0f}",
             ha="center",
             va="bottom",
             fontsize=9,
         )
 
     ax.set_xlabel("Fuel Type")
-    ax.set_ylabel("Average Price (USD)")
-    ax.yaxis.set_major_formatter(usd_formatter)
+    ax.set_ylabel(f"Average Price ({currency_sym})")
+    ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(False)
     return fig
 
 
-def chart_brand_avg_price(df: pd.DataFrame) -> plt.Figure:
+def chart_brand_avg_price(
+    df: pd.DataFrame, currency_sym: str = "$", currency_rate: float = 1.0
+) -> plt.Figure:
     """Bar chart — average Price_USD by Brand, sorted descending (EDA tab)."""
     if df.empty:
         return _empty_fig()
@@ -83,26 +89,27 @@ def chart_brand_avg_price(df: pd.DataFrame) -> plt.Figure:
         .mean()
         .sort_values("Price_USD", ascending=False)
     )
+    agg["Price_display"] = agg["Price_USD"] * currency_rate
 
     fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
     fig.subplots_adjust(left=0.14, right=0.96, bottom=0.20, top=0.92)
 
-    bars = ax.bar(agg["Brand"], agg["Price_USD"])
+    bars = ax.bar(agg["Brand"], agg["Price_display"])
     for bar in bars:
         height = bar.get_height()
         ax.text(
             bar.get_x() + bar.get_width() / 2,
             height,
-            f"{height:,.0f}",
+            f"{currency_sym}{height:,.0f}",
             ha="center",
             va="bottom",
             fontsize=8,
         )
 
     ax.set_xlabel("Brand")
-    ax.set_ylabel("Average Price (USD)")
+    ax.set_ylabel(f"Average Price ({currency_sym})")
     ax.tick_params(axis="x", rotation=45, labelsize=8)
-    ax.yaxis.set_major_formatter(usd_formatter)
+    ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(False)
     return fig
 
@@ -182,12 +189,15 @@ def chart_fuel_group_efficiency(df: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-def chart_hp_price_scatter(df: pd.DataFrame) -> plt.Figure:
+def chart_hp_price_scatter(
+    df: pd.DataFrame, currency_sym: str = "$", currency_rate: float = 1.0
+) -> plt.Figure:
     """Scatter — Horsepower vs Price_USD, coloured by Fuel_Type (EDA tab)."""
     if df.empty:
         return _empty_fig()
 
-    df = df.dropna(subset=["Horsepower", "Price_USD"])
+    df = df.dropna(subset=["Horsepower", "Price_USD"]).copy()
+    df["Price_display"] = df["Price_USD"] * currency_rate
 
     fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
     fig.subplots_adjust(left=0.14, right=0.78, bottom=0.20, top=0.92)
@@ -195,7 +205,7 @@ def chart_hp_price_scatter(df: pd.DataFrame) -> plt.Figure:
     for fuel, group in df.groupby("Fuel_Type"):
         ax.scatter(
             group["Horsepower"],
-            group["Price_USD"],
+            group["Price_display"],
             label=fuel,
             color=EDA_HP_PRICE_COLORS.get(fuel, PLOT_FALLBACK_COLOR),
             alpha=0.7,
@@ -205,7 +215,7 @@ def chart_hp_price_scatter(df: pd.DataFrame) -> plt.Figure:
         )
 
     ax.set_xlabel("Horsepower")
-    ax.set_ylabel("Price (USD)")
+    ax.set_ylabel(f"Price ({currency_sym})")
     ax.legend(
         title="Fuel Type",
         fontsize=8,
@@ -216,7 +226,7 @@ def chart_hp_price_scatter(df: pd.DataFrame) -> plt.Figure:
         frameon=False,
     )
     ax.grid(False)
-    ax.yaxis.set_major_formatter(usd_formatter)
+    ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     return fig
 
 
@@ -304,7 +314,9 @@ def ai_chart_fuel_group_efficiency(df: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-def ai_chart_fuel_avg_price(df: pd.DataFrame) -> plt.Figure:
+def ai_chart_fuel_avg_price(
+    df: pd.DataFrame, currency_sym: str = "$", currency_rate: float = 1.0
+) -> plt.Figure:
     """Bar chart — average Price_USD by Fuel_Type, AI tab palette."""
     if df.empty:
         return _empty_fig("No data for current query.")
@@ -314,6 +326,7 @@ def ai_chart_fuel_avg_price(df: pd.DataFrame) -> plt.Figure:
         return _empty_fig("Required columns not in query result.")
 
     agg = df.groupby("Fuel_Type", as_index=False)["Price_USD"].mean().dropna()
+    agg["Price_display"] = agg["Price_USD"] * currency_rate
 
     if agg.empty:
         return _empty_fig("No fuel price data available.")
@@ -322,7 +335,7 @@ def ai_chart_fuel_avg_price(df: pd.DataFrame) -> plt.Figure:
 
     ax.bar(
         agg["Fuel_Type"],
-        agg["Price_USD"],
+        agg["Price_display"],
         color=[
             AI_FUEL_PRICE_COLORS[i % len(AI_FUEL_PRICE_COLORS)]
             for i in range(len(agg))
@@ -330,8 +343,9 @@ def ai_chart_fuel_avg_price(df: pd.DataFrame) -> plt.Figure:
         edgecolor="white",
     )
     ax.set_xlabel("Fuel Type")
-    ax.set_ylabel("Average Price (USD)")
+    ax.set_ylabel(f"Average Price ({currency_sym})")
     ax.set_title("Average Price by Fuel Type")
+    ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
     return fig
