@@ -1,0 +1,19 @@
+# CODEOWNERS - Defines who must review changes to specific paths.
+# All paths require at least one approval from the listed owners.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Data processing module - pure Python, no Shiny
+src/data_processing.py @tanav2202
+
+# Charts module - pure Python, returns figures (full team)
+src/charts.py @tanav2202 @Eric-Wong97 @quandothoang @limorwin
+
+# AI Assistant tab in app.py (querychat integration)
+src/app.py @Eric-Wong97 @quandothoang
+
+# General src/ - full team must review
+src/ @tanav2202 @Eric-Wong97 @quandothoang @limorwin
+
+# Reports and changelog
+reports/ @limorwin
+CHANGELOG.md @limorwin
