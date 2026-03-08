@@ -5,6 +5,12 @@ Pure Python module — no Shiny dependencies.
 All functions accept a DataFrame and return a matplotlib Figure.
 """
 
+import sys
+from pathlib import Path
+
+# Ensure src/ is on the import path (needed for Posit Connect)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 import matplotlib.pyplot as plt
 import pandas as pd
 

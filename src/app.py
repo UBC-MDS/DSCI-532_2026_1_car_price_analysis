@@ -1,6 +1,10 @@
 from functools import partial
 from pathlib import Path
 import os
+import sys
+
+# Ensure src/ is on the import path (needed for Posit Connect)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from dotenv import load_dotenv
 
@@ -472,7 +476,7 @@ with ui.nav_panel("AI Assistant"):
             @render.plot
             def ai_fuel_price_plot():
                 return ai_chart_fuel_avg_price(
-                    chat().df(),
+                    chat.df(),
                     currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                     currency_rate=CURRENCY_RATES[input.input_currency()],
                 )
