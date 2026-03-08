@@ -2,16 +2,19 @@ name: car_price_analysis_env
 channels:
   - conda-forge
   - defaults
+
 dependencies:
   - python>=3.10
   - numpy
-  - pandas
-  - matplotlib
-  - pip
+  - pandas=2.2.3
+  - matplotlib=3.10.1
+  - seaborn=0.13.2
   - jupyterlab
+  - shiny
+  - python-dotenv=1.0.0
+  - duckdb
+  - tabulate=0.8.10
+  - pip
   - pip:
-    - seaborn==0.13.2
-    - shiny
-    - python-dotenv
-    - chatlas
-    - tabulate
+      - chatlas
+      - querychat==0.5.1
