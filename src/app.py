@@ -492,7 +492,8 @@ with ui.nav_panel("AI Assistant"):
 
         with ui.layout_sidebar():
             with ui.sidebar(width=400):
-                qc.ui()
+                with ui.tags.div(style="max-height: 55vh; overflow-y: auto; padding-right: 10px;"):
+                    qc.ui()
                 ui.hr()
                 ui.p("Prompts tested for AI visuals:")
                 ui.tags.ul(*[ui.tags.li(prompt) for prompt in AI_TEST_PROMPTS])
