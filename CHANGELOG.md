@@ -1,3 +1,8 @@
+## [0.4.0]
+
+### Changed
+- Refactored charts/app to use Altair for improved interactivity compared to Matplotlib static plots.
+
 ## [0.3.0]
 
 ### Added
