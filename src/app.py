@@ -68,9 +68,9 @@ if querychat is not None:
         greeting=(
             "Hello! I can help you explore the car price dataset. "
             "Try asking things like:\n"
-            "- *Show only hybrid and electric vehicles under $35,000 with efficiency score above 0.6*\n"
-            "- *Which brands have the highest average price?*\n"
-            "- *Filter to cars under $30,000 with efficiency score above 0.5*"
+            '- <span class="suggestion">Show only hybrid and electric vehicles under $35,000 with efficiency score above 0.6</span>\n'
+            '- <span class="suggestion">Which brands have the highest average price?</span>\n'
+            '- <span class="suggestion">Filter to cars under $30,000 with efficiency score above 0.5</span>'
         ),
     )
 # qc.server() is called inside the AI Assistant tab (within active Shiny session)
