@@ -2,6 +2,7 @@
 
 ### Changed
 - Refactored charts/app to use Altair for improved interactivity compared to Matplotlib static plots.
+- Updated Querychat to handle non-existant filters and return appropriate messages instead of errors.
 
 ## [0.3.0]
 
