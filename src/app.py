@@ -164,6 +164,12 @@ ui.head_content(
     .btn {
         border-radius: 10px;
     }
+
+    .card p {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-top: 0.5rem;
+    }
     """)
 )
 
@@ -392,6 +398,12 @@ with ui.nav_panel("EDA"):
                 @render.plot
                 def scatter_engine_efficiency():
                     return chart_engine_efficiency_scatter(filtered_df())
+                
+                ui.p(
+                    "Note: Each point represents a vehicle. The chart compares engine size "
+                    "with the calculated performance efficiency score. Colors represent "
+                    "different fuel types."
+                )
 
             with ui.card():
                 ui.card_header("Average Performance Efficiency by Fuel Type")
@@ -399,6 +411,12 @@ with ui.nav_panel("EDA"):
                 @render.plot
                 def bar_fuel_efficiency():
                     return chart_fuel_group_efficiency(filtered_df())
+                
+                ui.p(
+                    "Note: Efficiency score is a normalized metric summarizing how "
+                    "effectively engine performance translates into fuel efficiency. "
+                    "Higher values indicate better efficiency."
+                 )
 
         with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
             with ui.card():
