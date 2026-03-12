@@ -60,12 +60,30 @@ UBER_FUEL_TYPE_DEFAULTS = defaults["fuel_type_defaults"]
 UBER_PRICE_DEFAULT_RANGE = defaults["price_default_range"]
 
 
+def _build_querychat_extra_instructions(df) -> str:
+    """Return guardrails so QueryChat handles unavailable fields gracefully."""
+    available_columns = ", ".join(sorted(df.columns.tolist()))
+    return (
+        "You are helping users analyze the global_cars_enhanced dataset. "
+        "Never invent columns, values, or metrics that are not present in this dataset.\n\n"
+        f"Available columns: {available_columns}\n\n"
+        "When the user asks for a missing column, unavailable metric, or request that is not "
+        "applicable to this dataset:\n"
+        "1) Clearly say the requested field/analysis is not available.\n"
+        "2) Mention 2-4 relevant available columns that are close alternatives.\n"
+        "3) Offer one concrete, dataset-valid rephrasing they can try next.\n"
+        "4) Keep the tone helpful and concise.\n"
+        "Do not fail silently and do not return stack traces or technical errors."
+    )
+
+
 qc = None
 if querychat is not None:
     qc = querychat.QueryChat(
         data,
         "global_cars_enhanced",
         client=f"github/{github_model}",
+        extra_instructions=_build_querychat_extra_instructions(data),
         greeting=(
             "Hello! I can help you explore the car price dataset. "
             "Try asking things like:\n"
