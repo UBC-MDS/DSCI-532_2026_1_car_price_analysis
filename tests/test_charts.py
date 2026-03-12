@@ -6,6 +6,7 @@ Run from project root: pytest tests/test_charts.py -v
 import sys
 from pathlib import Path
 
+import altair as alt
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
@@ -15,10 +16,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from charts import (
     chart_fuel_avg_price,
+    chart_fuel_avg_price_interactive,
     chart_brand_avg_price,
+    chart_brand_avg_price_interactive,
     chart_engine_efficiency_scatter,
+    chart_engine_efficiency_scatter_interactive,
     chart_fuel_group_efficiency,
+    chart_fuel_group_efficiency_interactive,
     chart_hp_price_scatter,
+    chart_hp_price_scatter_interactive,
     ai_chart_engine_efficiency_scatter,
     ai_chart_fuel_group_efficiency,
     ai_chart_fuel_avg_price,
@@ -28,6 +34,11 @@ from charts import (
 def _is_valid_figure(fig):
     """Return True if fig is a matplotlib Figure with at least one axes."""
     return isinstance(fig, plt.Figure) and len(fig.axes) >= 1
+
+
+def _is_valid_altair_chart(chart):
+    """Return True if chart is an Altair chart object."""
+    return isinstance(chart, alt.TopLevelMixin)
 
 
 # Fixtures: minimal DataFrames for EDA and AI charts 
@@ -92,6 +103,16 @@ def test_chart_brand_avg_price_empty_returns_figure(df_empty):
     assert _is_valid_figure(fig)
 
 
+def test_chart_brand_avg_price_interactive_returns_chart(df_eda):
+    chart = chart_brand_avg_price_interactive(df_eda)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_brand_avg_price_interactive_empty_returns_chart(df_empty):
+    chart = chart_brand_avg_price_interactive(df_empty)
+    assert _is_valid_altair_chart(chart)
+
+
 def test_chart_engine_efficiency_scatter_returns_figure(df_eda):
     fig = chart_engine_efficiency_scatter(df_eda)
     assert _is_valid_figure(fig)
@@ -125,6 +146,46 @@ def test_chart_hp_price_scatter_empty_returns_figure(df_empty):
 def test_chart_hp_price_scatter_currency_params(df_eda):
     fig = chart_hp_price_scatter(df_eda, currency_sym="€", currency_rate=0.92)
     assert _is_valid_figure(fig)
+
+
+def test_chart_fuel_avg_price_interactive_returns_chart(df_eda):
+    chart = chart_fuel_avg_price_interactive(df_eda)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_fuel_avg_price_interactive_empty_returns_chart(df_empty):
+    chart = chart_fuel_avg_price_interactive(df_empty)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_engine_efficiency_scatter_interactive_returns_chart(df_eda):
+    chart = chart_engine_efficiency_scatter_interactive(df_eda)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_engine_efficiency_scatter_interactive_empty_returns_chart(df_empty):
+    chart = chart_engine_efficiency_scatter_interactive(df_empty)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_fuel_group_efficiency_interactive_returns_chart(df_eda):
+    chart = chart_fuel_group_efficiency_interactive(df_eda)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_fuel_group_efficiency_interactive_empty_returns_chart(df_empty):
+    chart = chart_fuel_group_efficiency_interactive(df_empty)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_hp_price_scatter_interactive_returns_chart(df_eda):
+    chart = chart_hp_price_scatter_interactive(df_eda)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_hp_price_scatter_interactive_empty_returns_chart(df_empty):
+    chart = chart_hp_price_scatter_interactive(df_empty)
+    assert _is_valid_altair_chart(chart)
 
 
 # AI chart smoke tests 

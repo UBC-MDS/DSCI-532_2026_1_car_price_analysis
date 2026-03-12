@@ -9,6 +9,9 @@ dependencies:
   - pandas=2.2.3
   - matplotlib=3.10.1
   - seaborn=0.13.2
+  - altair
+  - shinywidgets
+  - anywidget
   - jupyterlab
   - shiny
   - python-dotenv=1.0.0
