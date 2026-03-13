@@ -132,3 +132,25 @@ Rationale:
 * Enables rapid return to baseline view.
 * Improves usability during iterative filtering.
 * Reduces friction in exploratory analysis.
+
+## Milestone 4 Collaboration and Design Decisions
+
+For Milestone 4, the team continued to follow a "pull request" based workflow where all changes are introduced through GitHub issues and reviewed before merging into the main branch.
+
+### Work Organization
+
+Tasks for this milestone were distributed across team members to ensure balanced contributions across code, documentation, testing, and release preparation. Each team member was responsible for a clearly defined area of work, and each resolved at least one feedback item collected in the M4 Feedback Prioritization issue.
+
+### Design Before Implementation
+
+For larger changes, including the advanced dashboard feature and the transition to Parquet + DuckDB, design decisions were documented in issues and specification updates before implementation. This helped ensure that the team had a shared understanding of the approach prior to coding.
+
+### Pull Request Workflow
+
+All work was submitted through scoped pull requests addressing a single feature or fix. Each pull request included clear commit messages and received at least one peer review before merging.
+
+### Feedback Integration
+
+Instructor and peer feedback from previous milestones was collected in a dedicated **M4 Feedback Prioritization issue**, where items were categorized as critical or non-critical. Critical items were addressed before release, and each team member resolved at least one feedback item through a corresponding pull request.
+
+This process ensured transparency of decisions and traceability between issues, pull requests, and implementation changes.
