@@ -16,6 +16,8 @@ dependencies:
   - shiny
   - python-dotenv=1.0.0
   - duckdb
+  - ibis-framework
+  - pyarrow
   - tabulate=0.8.10
   - pytest
   - pip

@@ -9,3 +9,5 @@ python-dotenv==1.0.0
 tabulate==0.8.10
 querychat==0.5.1
 duckdb
+ibis-framework[duckdb]
+pyarrow

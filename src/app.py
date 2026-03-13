@@ -38,6 +38,7 @@ from data_processing import (
     filter_dataframe,
     load_data,
     selection_label as _selection_label,
+    to_pandas,
     AI_TEST_PROMPTS,
 )
 
@@ -45,7 +46,8 @@ from data_processing import (
 _dotenv_loaded = load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 github_model = os.getenv("GITHUB_MODEL", "gpt-4.1-mini")
 
-data = load_data()
+data = load_data()                 # ibis table (lazy)
+data_pd = to_pandas(data)          # materialised once for overview stats & querychat
 choices = build_choices(data)
 defaults = build_defaults(choices)
 
@@ -62,8 +64,9 @@ UBER_PRICE_DEFAULT_RANGE = defaults["price_default_range"]
 
 qc = None
 if querychat is not None:
+    # Try ibis table directly; fall back to data_pd if querychat errors
     qc = querychat.QueryChat(
-        data,
+        data_pd,
         "global_cars_enhanced",
         client=f"github/{github_model}",
         greeting=(
@@ -199,13 +202,13 @@ with ui.nav_panel("Overview"):
 
             @render.ui
             def overview_dataset_stats():
-                n_records = len(data)
-                n_brands = data["Brand"].nunique()
-                n_countries = data["Manufacturing_Country"].nunique()
-                year_min = int(data["Manufacture_Year"].min())
-                year_max = int(data["Manufacture_Year"].max())
-                p_min = int(data["Price_USD"].min())
-                p_max = int(data["Price_USD"].max())
+                n_records = len(data_pd)
+                n_brands = data_pd["Brand"].nunique()
+                n_countries = data_pd["Manufacturing_Country"].nunique()
+                year_min = int(data_pd["Manufacture_Year"].min())
+                year_max = int(data_pd["Manufacture_Year"].max())
+                p_min = int(data_pd["Price_USD"].min())
+                p_max = int(data_pd["Price_USD"].max())
                 currency = input.input_currency()
                 rate = CURRENCY_RATES[currency]
                 sym = CURRENCY_SYMBOLS[currency]
@@ -307,12 +310,12 @@ with ui.nav_panel("EDA"):
             clicked_brands = brand_chart_selection()
             clicked_fuels = fuel_chart_selection()
 
-            df = sidebar_filtered_df()
+            t = sidebar_filtered_df()
             if clicked_brands:
-                df = df[df["Brand"].isin(clicked_brands)]
+                t = t.filter(t["Brand"].isin(clicked_brands))
             if clicked_fuels:
-                df = df[df["Fuel_Type"].isin(clicked_fuels)]
-            return df
+                t = t.filter(t["Fuel_Type"].isin(clicked_fuels))
+            return t
 
         @reactive.calc
         def filter_state_values():
@@ -325,7 +328,7 @@ with ui.nav_panel("EDA"):
             currency = input.input_currency()
             rate = CURRENCY_RATES[currency]
             sym = CURRENCY_SYMBOLS[currency]
-            count = len(filtered_df())
+            count = filtered_df().count().to_pandas()
             return {
                 "brand": brand_label,
                 "body_type": body_type_label,
@@ -422,7 +425,7 @@ with ui.nav_panel("EDA"):
                 @render_altair
                 def fuel_eff_plot():
                     return chart_fuel_avg_price_interactive(
-                        sidebar_filtered_df(),
+                        to_pandas(sidebar_filtered_df()),
                         currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                         currency_rate=CURRENCY_RATES[input.input_currency()],
                     )
@@ -439,7 +442,7 @@ with ui.nav_panel("EDA"):
                 @render_altair
                 def plot_brand_price():
                     return chart_brand_avg_price_interactive(
-                        sidebar_filtered_df(),
+                        to_pandas(sidebar_filtered_df()),
                         currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                         currency_rate=CURRENCY_RATES[input.input_currency()],
                     )
@@ -456,7 +459,7 @@ with ui.nav_panel("EDA"):
 
                 @render_altair
                 def scatter_engine_efficiency():
-                    return chart_engine_efficiency_scatter_interactive(filtered_df())
+                    return chart_engine_efficiency_scatter_interactive(to_pandas(filtered_df()))
                 
                 ui.p(
                     "Note: Each point represents a vehicle. The chart compares engine size "
@@ -469,7 +472,7 @@ with ui.nav_panel("EDA"):
 
                 @render_altair
                 def bar_fuel_efficiency():
-                    return chart_fuel_group_efficiency_interactive(filtered_df())
+                    return chart_fuel_group_efficiency_interactive(to_pandas(filtered_df()))
                 
                 ui.p(
                     "Note: Efficiency score is a normalized metric summarizing how "
@@ -490,7 +493,7 @@ with ui.nav_panel("EDA"):
                 @render_altair
                 def plot_hp_price():
                     return chart_hp_price_scatter_interactive(
-                        filtered_df(),
+                        to_pandas(filtered_df()),
                         currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                         currency_rate=CURRENCY_RATES[input.input_currency()],
                     )
