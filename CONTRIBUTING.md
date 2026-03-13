@@ -44,7 +44,7 @@ detailed your report, the easier and thus faster we can help you.**
 ### Fix Bugs
 
 Look through the GitHub issues for bugs. When you decide to work onan issue, please assign yourself to it and add a comment that you'll be working on that,  
-too. 
+too.
 
 ### Write Documentation
 
@@ -92,3 +92,21 @@ Before you submit a pull request, please check that it meets these guidelines:
 4. Include `Closes #X` in the description to link to the issue.
 5. Include a brief design note in the PR description.
 
+## M3 Retrospective
+
+### What worked well
+- We divided work into clear ownership areas across team members.
+- The dashboard evolved incrementally through PR-based development.
+- Refactoring into separate modules improved readability and maintainability.
+
+### What did not work well
+- Some earlier PRs were merged without peer review.
+- Earlier peer reviews would help identify issues sooner in the development process.
+
+## M4 Collaboration Norms
+
+For Milestone 4, we agreed to:
+- Require at least one peer review before merging any PR.
+- Keep PRs scoped to one feature or fix.
+- Spread review work more evenly across team members.
+- Resolve at least one feedback item per team member through a documented PR.
