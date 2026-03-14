@@ -90,6 +90,7 @@ def chart_fuel_avg_price(
 
     ax.set_xlabel("Fuel Type")
     ax.set_ylabel(f"Average Price ({currency_sym})")
+    ax.set_ylim(bottom=0)
     ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(False)
     return fig
@@ -126,6 +127,7 @@ def chart_brand_avg_price(
 
     ax.set_xlabel("Brand")
     ax.set_ylabel(f"Average Price ({currency_sym})")
+    ax.set_ylim(bottom=0)
     ax.tick_params(axis="x", rotation=45, labelsize=8)
     ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(False)
@@ -155,19 +157,16 @@ def chart_brand_avg_price_interactive(
 
     return (
         alt.Chart(agg)
-        .mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6)
+        .mark_bar()
         .encode(
             x=alt.X("Brand:N", sort=None, title="Brand", axis=alt.Axis(labelAngle=-35)),
             y=alt.Y(
                 "Price_display:Q",
                 title=f"Average Price ({currency_sym})",
                 axis=alt.Axis(format=",.0f"),
+                scale=alt.Scale(zero=True, nice=True),
             ),
-            color=alt.condition(
-                brand_pick,
-                alt.value("#3b82f6"),
-                alt.value("#bfd7ea"),
-            ),
+            color=alt.value("#3b82f6"),
             tooltip=[
                 alt.Tooltip("Brand:N", title="Brand"),
                 alt.Tooltip("Price_display:Q", title=f"Average Price ({currency_sym})", format=",.0f"),
@@ -313,19 +312,16 @@ def chart_fuel_avg_price_interactive(
 
     return (
         alt.Chart(agg)
-        .mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6)
+        .mark_bar()
         .encode(
             x=alt.X("Fuel_Type:N", title="Fuel Type"),
             y=alt.Y(
                 "Price_display:Q",
                 title=f"Average Price ({currency_sym})",
                 axis=alt.Axis(format=",.0f"),
+                scale=alt.Scale(zero=True, nice=True),
             ),
-            color=alt.condition(
-                fuel_pick,
-                alt.value("#3b82f6"),
-                alt.value("#bfd7ea"),
-            ),
+            color=alt.value("#3b82f6"),
             tooltip=[
                 alt.Tooltip("Fuel_Type:N", title="Fuel Type"),
                 alt.Tooltip("Price_display:Q", title=f"Avg Price ({currency_sym})", format=",.0f"),
@@ -609,6 +605,7 @@ def ai_chart_fuel_avg_price(
     ax.set_xlabel("Fuel Type")
     ax.set_ylabel(f"Average Price ({currency_sym})")
     ax.set_title("Average Price by Fuel Type")
+    ax.set_ylim(bottom=0)
     ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
