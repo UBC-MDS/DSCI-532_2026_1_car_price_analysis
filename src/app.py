@@ -306,6 +306,24 @@ with ui.nav_panel("EDA"):
             )
 
         @reactive.calc
+        def fuel_chart_df():
+            """sidebar + brand click → feeds fuel price chart (no circular dep)."""
+            t = sidebar_filtered_df()
+            clicked_brands = brand_chart_selection()
+            if clicked_brands:
+                t = t.filter(t["Brand"].isin(clicked_brands))
+            return t
+
+        @reactive.calc
+        def brand_chart_df():
+            """sidebar + fuel click → feeds brand price chart (no circular dep)."""
+            t = sidebar_filtered_df()
+            clicked_fuels = fuel_chart_selection()
+            if clicked_fuels:
+                t = t.filter(t["Fuel_Type"].isin(clicked_fuels))
+            return t
+
+        @reactive.calc
         def filtered_df():
             clicked_brands = brand_chart_selection()
             clicked_fuels = fuel_chart_selection()
@@ -425,7 +443,7 @@ with ui.nav_panel("EDA"):
                 @render_altair
                 def fuel_eff_plot():
                     return chart_fuel_avg_price_interactive(
-                        to_pandas(sidebar_filtered_df()),
+                        to_pandas(fuel_chart_df()),
                         currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                         currency_rate=CURRENCY_RATES[input.input_currency()],
                     )
@@ -442,7 +460,7 @@ with ui.nav_panel("EDA"):
                 @render_altair
                 def plot_brand_price():
                     return chart_brand_avg_price_interactive(
-                        to_pandas(sidebar_filtered_df()),
+                        to_pandas(brand_chart_df()),
                         currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                         currency_rate=CURRENCY_RATES[input.input_currency()],
                     )
