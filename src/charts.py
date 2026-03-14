@@ -90,6 +90,7 @@ def chart_fuel_avg_price(
 
     ax.set_xlabel("Fuel Type")
     ax.set_ylabel(f"Average Price ({currency_sym})")
+    ax.set_ylim(bottom=0)
     ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(False)
     return fig
@@ -126,6 +127,7 @@ def chart_brand_avg_price(
 
     ax.set_xlabel("Brand")
     ax.set_ylabel(f"Average Price ({currency_sym})")
+    ax.set_ylim(bottom=0)
     ax.tick_params(axis="x", rotation=45, labelsize=8)
     ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(False)
@@ -162,6 +164,7 @@ def chart_brand_avg_price_interactive(
                 "Price_display:Q",
                 title=f"Average Price ({currency_sym})",
                 axis=alt.Axis(format=",.0f"),
+                scale=alt.Scale(zero=True, nice=True),
             ),
             color=alt.condition(
                 brand_pick,
@@ -320,6 +323,7 @@ def chart_fuel_avg_price_interactive(
                 "Price_display:Q",
                 title=f"Average Price ({currency_sym})",
                 axis=alt.Axis(format=",.0f"),
+                scale=alt.Scale(zero=True, nice=True),
             ),
             color=alt.condition(
                 fuel_pick,
@@ -609,6 +613,7 @@ def ai_chart_fuel_avg_price(
     ax.set_xlabel("Fuel Type")
     ax.set_ylabel(f"Average Price ({currency_sym})")
     ax.set_title("Average Price by Fuel Type")
+    ax.set_ylim(bottom=0)
     ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
