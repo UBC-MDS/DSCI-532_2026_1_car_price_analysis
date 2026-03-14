@@ -188,6 +188,37 @@ def test_chart_hp_price_scatter_interactive_empty_returns_chart(df_empty):
     assert _is_valid_altair_chart(chart)
 
 
+#  More specific behavior tests for interactive scatters
+
+def test_engine_efficiency_interactive_has_scatter_and_line(df_eda):
+    """Engine-efficiency interactive chart should be a layered scatter + line by Fuel_Type."""
+    chart = chart_engine_efficiency_scatter_interactive(df_eda)
+    assert isinstance(chart, alt.LayerChart)
+    # Expect exactly two layers: points then line
+    assert len(chart.layer) == 2
+    points_layer, line_layer = chart.layer
+    assert points_layer.mark["type"] == "circle"
+    assert line_layer.mark["type"] == "line"
+    # Color is driven by Fuel_Type for both layers
+    assert "Fuel_Type" in points_layer.encoding.color.shorthand
+    assert "Fuel_Type" in line_layer.encoding.color.shorthand
+
+
+def test_hp_price_interactive_has_scatter_and_line(df_eda):
+    """HP–Price interactive chart should be a layered scatter + line by Fuel_Type."""
+    chart = chart_hp_price_scatter_interactive(df_eda)
+    assert isinstance(chart, alt.LayerChart)
+    assert len(chart.layer) == 2
+    points_layer, line_layer = chart.layer
+    assert points_layer.mark["type"] == "circle"
+    assert line_layer.mark["type"] == "line"
+    # X/Y encodings match Horsepower vs Price_display on both layers
+    assert "Horsepower" in points_layer.encoding.x.shorthand
+    assert "Horsepower" in line_layer.encoding.x.shorthand
+    assert "Price_display" in points_layer.encoding.y.shorthand
+    assert "Price_display" in line_layer.encoding.y.shorthand
+
+
 # AI chart smoke tests 
 
 def test_ai_chart_engine_efficiency_scatter_returns_figure(df_ai):
