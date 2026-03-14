@@ -154,3 +154,22 @@ All work was submitted through scoped pull requests addressing a single feature 
 Instructor and peer feedback from previous milestones was collected in a dedicated **M4 Feedback Prioritization issue**, where items were categorized as critical or non-critical. Critical items were addressed before release, and each team member resolved at least one feedback item through a corresponding pull request.
 
 This process ensured transparency of decisions and traceability between issues, pull requests, and implementation changes.
+
+### Advanced Feature Discussion and Next Steps
+
+The team discussed four candidate directions for the Milestone 4 advanced feature:
+
+* **Option A — Querychat Customization:** Modify how the LLM behaves inside the app.
+* **Option B — Persistent LLM Logging:** Store and analyze user-LLM interactions.
+* **Option C — RAG: Custom Knowledge Base:** Add domain-specific context to improve LLM responses.
+* **Option D — Component Click Interaction:** Make visual components behave like interactive inputs.
+
+After discussion, the team aligned on **Option D** as the best fit for the current dashboard and user story. The rationale was that the app already emphasizes visual exploration, and moving interaction directly into charts is more intuitive than relying only on sidebar filters.
+
+Agreed direction for implementation:
+
+* Enable clicking chart elements (for example, bars/categories) to apply dashboard filtering behavior.
+* Add richer chart-level interaction where feasible (for example, hover details for scatterplots).
+* Prioritize user-facing interactivity that complements existing filters without adding unnecessary workflow complexity.
+
+This decision also reflects earlier milestone constraints: the team had considered this approach previously, but deferred it due to time and tooling migration effort.
