@@ -297,19 +297,25 @@ with ui.nav_panel("EDA"):
             ui.p("Rates are approximate.", class_="text-muted", style="font-size:0.85rem;")
             ui.input_action_button("reset_btn", "Reset Filters")
 
-        # Store chart selections in reactive values; chart data only depends on these,
-        # while separate effects sync them from the widgets. This avoids circular
-        # dependencies between chart outputs.
-        _brand_selection_rv = reactive.Value([])
-        _fuel_selection_rv = reactive.Value([])
-
         @reactive.calc
         def brand_chart_selection():
-            return _brand_selection_rv()
+            try:
+                selection = reactive_read(plot_brand_price.widget.selections, "brand_pick")
+            except Exception:
+                return []
+            if selection is None or selection.value is None:
+                return []
+            return [item["Brand"] for item in selection.value if "Brand" in item]
 
         @reactive.calc
         def fuel_chart_selection():
-            return _fuel_selection_rv()
+            try:
+                selection = reactive_read(fuel_eff_plot.widget.selections, "fuel_pick")
+            except Exception:
+                return []
+            if selection is None or selection.value is None:
+                return []
+            return [item["Fuel_Type"] for item in selection.value if "Fuel_Type" in item]
 
         @reactive.calc
         def sidebar_filtered_df():
