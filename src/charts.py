@@ -174,7 +174,7 @@ def chart_brand_avg_price_interactive(
         )
         .add_params(brand_pick)
         .properties(width="container", height=320)
-        .configure_view(stroke=None)
+        # .configure_view(stroke=None)
     )
 
 
@@ -332,7 +332,7 @@ def chart_fuel_avg_price_interactive(
         )
         .add_params(fuel_pick)
         .properties(width="container", height=320)
-        .configure_view(stroke=None)
+        # .configure_view(stroke=None)
     )
 
 
@@ -361,7 +361,7 @@ def chart_engine_efficiency_scatter_interactive(df: pd.DataFrame) -> alt.Chart:
         )
         .add_params(fuel_sel)
         .properties(width="container", height=320)
-        .configure_view(stroke=None)
+        # .configure_view(stroke=None)
     )
 
 
@@ -402,7 +402,7 @@ def chart_fuel_group_efficiency_interactive(df: pd.DataFrame) -> alt.Chart:
             ],
         )
         .properties(width="container", height=320)
-        .configure_view(stroke=None)
+        # .configure_view(stroke=None)
     )
 
 
@@ -439,7 +439,7 @@ def chart_hp_price_scatter_interactive(
         )
         .add_params(fuel_sel)
         .properties(width="container", height=320)
-        .configure_view(stroke=None)
+        # .configure_view(stroke=None)
     )
 
 
