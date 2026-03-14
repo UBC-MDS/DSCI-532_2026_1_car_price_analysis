@@ -166,7 +166,11 @@ def chart_brand_avg_price_interactive(
                 axis=alt.Axis(format=",.0f"),
                 scale=alt.Scale(zero=True, nice=True),
             ),
-            color=alt.value("#3b82f6"),
+            color=alt.condition(
+                brand_pick,
+                alt.value("#3b82f6"),
+                alt.value("#bfd7ea"),
+            ),
             tooltip=[
                 alt.Tooltip("Brand:N", title="Brand"),
                 alt.Tooltip("Price_display:Q", title=f"Average Price ({currency_sym})", format=",.0f"),
@@ -321,7 +325,11 @@ def chart_fuel_avg_price_interactive(
                 axis=alt.Axis(format=",.0f"),
                 scale=alt.Scale(zero=True, nice=True),
             ),
-            color=alt.value("#3b82f6"),
+            color=alt.condition(
+                fuel_pick,
+                alt.value("#3b82f6"),
+                alt.value("#bfd7ea"),
+            ),
             tooltip=[
                 alt.Tooltip("Fuel_Type:N", title="Fuel Type"),
                 alt.Tooltip("Price_display:Q", title=f"Avg Price ({currency_sym})", format=",.0f"),
