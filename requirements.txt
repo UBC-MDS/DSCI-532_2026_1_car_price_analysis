@@ -4,6 +4,7 @@ pandas==2.2.3
 matplotlib==3.10.1
 altair
 anywidget
+vl-convert-python
 chatlas
 python-dotenv==1.0.0
 tabulate==0.8.10

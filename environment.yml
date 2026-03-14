@@ -24,3 +24,4 @@ dependencies:
   - pip:
       - chatlas
       - querychat==0.5.1
+      - vl-convert-python

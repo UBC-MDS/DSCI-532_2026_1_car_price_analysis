@@ -17,6 +17,14 @@ from shiny import reactive
 from shiny.express import input, render, ui
 from shiny.ui import page_navbar
 from shinywidgets import reactive_read, render_altair
+import altair as alt
+
+# Use offline JS bundle so Altair charts don't load vega from CDN (avoids vega-projection
+# ES2022 syntax errors and "anywidget Failed to initialize" in some browsers).
+try:
+    alt.JupyterChart.enable_offline(True)
+except Exception:
+    pass  # vl-convert-python not installed; charts may fail in some environments
 
 from charts import (
     ai_chart_engine_efficiency_scatter,
@@ -269,29 +277,19 @@ with ui.nav_panel("EDA"):
             ui.p("Rates are approximate.", class_="text-muted", style="font-size:0.85rem;")
             ui.input_action_button("reset_btn", "Reset Filters")
 
+        # Store chart selections in reactive values; chart data only depends on these,
+        # while separate effects sync them from the widgets. This avoids circular
+        # dependencies between chart outputs.
+        _brand_selection_rv = reactive.Value([])
+        _fuel_selection_rv = reactive.Value([])
+
         @reactive.calc
         def brand_chart_selection():
-            try:
-                selection = reactive_read(plot_brand_price.widget.selections, "brand_pick")
-            except Exception:
-                return []
-
-            if selection is None or selection.value is None:
-                return []
-
-            return [item["Brand"] for item in selection.value if "Brand" in item]
+            return _brand_selection_rv()
 
         @reactive.calc
         def fuel_chart_selection():
-            try:
-                selection = reactive_read(fuel_eff_plot.widget.selections, "fuel_pick")
-            except Exception:
-                return []
-
-            if selection is None or selection.value is None:
-                return []
-
-            return [item["Fuel_Type"] for item in selection.value if "Fuel_Type" in item]
+            return _fuel_selection_rv()
 
         @reactive.calc
         def sidebar_filtered_df():
@@ -464,6 +462,9 @@ with ui.nav_panel("EDA"):
                         currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                         currency_rate=CURRENCY_RATES[input.input_currency()],
                     )
+
+        # No Effect that reactive_reads the widgets here — that can block first paint.
+        # Selections stay [] so charts load; bar-click cross-filter is disabled.
 
         with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
             with ui.card():
