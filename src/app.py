@@ -466,60 +466,43 @@ with ui.nav_panel("EDA"):
         # No Effect that reactive_reads the widgets here — that can block first paint.
         # Selections stay [] so charts load; bar-click cross-filter is disabled.
 
-        with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
+        with ui.layout_columns(col_widths=(6, 6), gap="1.5rem", equal_height=True):
             with ui.card():
                 ui.card_header("Engine Size vs. Performance Efficiency")
-
                 ui.p(
-                    "Hover for details. Click the legend to highlight by fuel type.",
+                    "Trend by fuel type (Electric excluded from trend). Click legend to highlight. Efficiency = normalized mileage & power (0–1).",
                     class_="text-muted",
                     style="font-size:0.85rem;",
                 )
-
                 @render_altair
                 def scatter_engine_efficiency():
                     return chart_engine_efficiency_scatter_interactive(to_pandas(filtered_df()))
-                
-                ui.p(
-                    "Note: Each point represents a vehicle. The chart compares engine size "
-                    "with the calculated performance efficiency score. Colors represent "
-                    "different fuel types."
-                )
 
             with ui.card():
                 ui.card_header("Average Performance Efficiency by Fuel Type")
-
-                @render_altair
-                def bar_fuel_efficiency():
-                    return chart_fuel_group_efficiency_interactive(to_pandas(filtered_df()))
-                
                 ui.p(
-                    "Note: Efficiency score is a normalized metric summarizing how "
-                    "effectively engine performance translates into fuel efficiency. "
-                    "Higher values indicate better efficiency."
-                 )
-
-        with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
-            with ui.card():
-                ui.card_header("Horsepower vs Price")
-
-                ui.p(
-                    "Hover for details. Click the legend to highlight by fuel type.",
+                    "Higher = better. Hybrid vs Standard Fuel.",
                     class_="text-muted",
                     style="font-size:0.85rem;",
                 )
-
                 @render_altair
-                def plot_hp_price():
-                    return chart_hp_price_scatter_interactive(
-                        to_pandas(filtered_df()),
-                        currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
-                        currency_rate=CURRENCY_RATES[input.input_currency()],
-                    )
+                def bar_fuel_efficiency():
+                    return chart_fuel_group_efficiency_interactive(to_pandas(filtered_df()))
 
-            with ui.card():
-                ui.card_header("Manufacture Year vs. Mileage")
-                ui.p("Placeholder — future chart")
+        with ui.card():
+            ui.card_header("Horsepower vs Price")
+            ui.p(
+                "Trend lines by fuel type; top-priced vehicles labeled. Click legend to highlight.",
+                class_="text-muted",
+                style="font-size:0.85rem;",
+            )
+            @render_altair
+            def plot_hp_price():
+                return chart_hp_price_scatter_interactive(
+                    to_pandas(filtered_df()),
+                    currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
+                    currency_rate=CURRENCY_RATES[input.input_currency()],
+                )
 
 
 with ui.nav_panel("AI Assistant"):
