@@ -5,19 +5,18 @@
 - Example prompt suggestions in the Querychat interface with copyable span components (#76).
 - Playwright tests verifying core dashboard behaviors.
 - Unit tests for refactored chart logic functions.
-- Parquet dataset stored in `data/processed/` for improved data loading architecture.
-- DuckDB + ibis integration enabling lazy filtering before data enters memory.
+- Parquet dataset stored in `data/processed/` for improved data loading architecture (#92).
+- DuckDB + ibis integration enabling lazy filtering before data enters memory (#92).
 - M4 Feedback Prioritization issue created and tracked to organize instructor, TA, and peer feedback (#83).
 
 ### Changed
-- Refactored charts/app to use Altair for improved interactivity compared to Matplotlib static plots.
+- Refactored charts/app to use Altair for improved interactivity compared to Matplotlib static plots (#75).
 - Improved Querychat interface with scrollable chat output to prevent layout distortion (addressing TA feedback via #81).
-- Updated data pipeline to use Parquet + DuckDB queries instead of loading CSV directly.
+- Updated data pipeline to use Parquet + DuckDB queries instead of loading CSV directly (#92).
 - Updated dependencies and environment configuration to support new architecture and testing tools.
 
 ### Fixed
 - Querychat now handles missing or non-existent columns and returns helpful suggestions instead of failing (#85).
-- Improved layout stability when multiple AI prompts are submitted in the chat interface.
 
 ### Known Issues
 - Scatter plots may still show limited visible trends depending on filter combinations due to dataset size.
