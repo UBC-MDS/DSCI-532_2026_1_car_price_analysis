@@ -72,7 +72,9 @@ UBER_PRICE_DEFAULT_RANGE = defaults["price_default_range"]
 
 def _build_querychat_extra_instructions(df) -> str:
     """Return guardrails so QueryChat handles unavailable fields gracefully."""
-    available_columns = ", ".join(sorted(df.columns.tolist()))
+    columns = getattr(df, "columns", [])
+    columns_list = columns.tolist() if hasattr(columns, "tolist") else list(columns)
+    available_columns = ", ".join(sorted(map(str, columns_list)))
     return (
         "You are helping users analyze the global_cars_enhanced dataset. "
         "Never invent columns, values, or metrics that are not present in this dataset.\n\n"
