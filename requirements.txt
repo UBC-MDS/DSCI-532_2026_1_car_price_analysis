@@ -12,3 +12,4 @@ querychat==0.5.1
 duckdb
 ibis-framework[duckdb]
 pyarrow
+pytest-playwright

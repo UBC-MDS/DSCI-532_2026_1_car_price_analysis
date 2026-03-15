@@ -20,6 +20,7 @@ dependencies:
   - pyarrow
   - tabulate=0.8.10
   - pytest
+  - playwright
   - pip
   - pip:
       - chatlas
