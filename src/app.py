@@ -297,25 +297,44 @@ with ui.nav_panel("EDA"):
             ui.p("Rates are approximate.", class_="text-muted", style="font-size:0.85rem;")
             ui.input_action_button("reset_btn", "Reset Filters")
 
-        @reactive.calc
-        def brand_chart_selection():
+        brand_chart_selection_state = reactive.value([])
+        fuel_chart_selection_state = reactive.value([])
+
+        @reactive.effect
+        def _sync_brand_chart_selection():
             try:
                 selection = reactive_read(plot_brand_price.widget.selections, "brand_pick")
             except Exception:
-                return []
-            if selection is None or selection.value is None:
-                return []
-            return [item["Brand"] for item in selection.value if "Brand" in item]
+                return
 
-        @reactive.calc
-        def fuel_chart_selection():
+            parsed = []
+            if selection is not None and selection.value is not None:
+                parsed = [item["Brand"] for item in selection.value if "Brand" in item]
+
+            if parsed != brand_chart_selection_state.get():
+                brand_chart_selection_state.set(parsed)
+
+        @reactive.effect
+        def _sync_fuel_chart_selection():
             try:
                 selection = reactive_read(fuel_eff_plot.widget.selections, "fuel_pick")
             except Exception:
-                return []
-            if selection is None or selection.value is None:
-                return []
-            return [item["Fuel_Type"] for item in selection.value if "Fuel_Type" in item]
+                return
+
+            parsed = []
+            if selection is not None and selection.value is not None:
+                parsed = [item["Fuel_Type"] for item in selection.value if "Fuel_Type" in item]
+
+            if parsed != fuel_chart_selection_state.get():
+                fuel_chart_selection_state.set(parsed)
+
+        @reactive.calc
+        def brand_chart_selection():
+            return brand_chart_selection_state.get()
+
+        @reactive.calc
+        def fuel_chart_selection():
+            return fuel_chart_selection_state.get()
 
         @reactive.calc
         def sidebar_filtered_df():
@@ -337,6 +356,24 @@ with ui.nav_panel("EDA"):
             t = sidebar_filtered_df()
             if clicked_brands:
                 t = t.filter(t["Brand"].isin(clicked_brands))
+            if clicked_fuels:
+                t = t.filter(t["Fuel_Type"].isin(clicked_fuels))
+            return t
+
+        @reactive.calc
+        def fuel_chart_df():
+            # Fuel chart responds to brand bar selection.
+            t = sidebar_filtered_df()
+            clicked_brands = brand_chart_selection()
+            if clicked_brands:
+                t = t.filter(t["Brand"].isin(clicked_brands))
+            return t
+
+        @reactive.calc
+        def brand_chart_df():
+            # Brand chart responds to fuel bar selection.
+            t = sidebar_filtered_df()
+            clicked_fuels = fuel_chart_selection()
             if clicked_fuels:
                 t = t.filter(t["Fuel_Type"].isin(clicked_fuels))
             return t
@@ -401,7 +438,6 @@ with ui.nav_panel("EDA"):
                         pill("Body Type", state["body_type"]),
                         pill("Fuel Type", state["fuel_type"]),
                         pill("Price", state["price"]),
-                        pill("Vehicles", state["vehicles"]),
                         style=(
                             "display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));"
                             "gap:0.6rem;"
@@ -449,7 +485,7 @@ with ui.nav_panel("EDA"):
                 @render_altair
                 def fuel_eff_plot():
                     return chart_fuel_avg_price_interactive(
-                        to_pandas(sidebar_filtered_df()),
+                        to_pandas(fuel_chart_df()),
                         currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                         currency_rate=CURRENCY_RATES[input.input_currency()],
                     )
@@ -466,13 +502,12 @@ with ui.nav_panel("EDA"):
                 @render_altair
                 def plot_brand_price():
                     return chart_brand_avg_price_interactive(
-                        to_pandas(sidebar_filtered_df()),
+                        to_pandas(brand_chart_df()),
                         currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                         currency_rate=CURRENCY_RATES[input.input_currency()],
                     )
 
-        # No Effect that reactive_reads the widgets here — that can block first paint.
-        # Selections stay [] so charts load; bar-click cross-filter is disabled.
+        # Cross-filter is handled via reactive_read in the chart selection calcs above.
 
         with ui.layout_columns(col_widths=(6, 6), gap="1.5rem", equal_height=True):
             with ui.card():
