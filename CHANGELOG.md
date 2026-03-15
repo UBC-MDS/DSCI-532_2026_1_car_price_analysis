@@ -1,4 +1,4 @@
-## [0.4.0]
+## [0.4.0] - 2026-03-15
 
 ### Added
 - Chart captions explaining Efficiency Score and scatter plot interpretation (addressing feedback #73 via #84).
@@ -17,6 +17,8 @@
 
 ### Fixed
 - Querychat now handles missing or non-existent columns and returns helpful suggestions instead of failing (#85).
+
+- **Feedback prioritization issue link:** #83
 
 ### Known Issues
 - Scatter plots may still show limited visible trends depending on filter combinations due to dataset size (addressing feedback #73 via #97).
