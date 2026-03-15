@@ -3,7 +3,7 @@
 ### Added
 - Chart captions explaining Efficiency Score and scatter plot interpretation (addressing feedback #73 via #84).
 - Example prompt suggestions in the Querychat interface with copyable span components (#76).
-- Playwright tests verifying core dashboard behaviors (#98).
+- Playwright tests verifying core dashboard behaviors (#108).
 - Unit tests for refactored chart logic functions (#98).
 - Parquet dataset stored in `data/processed/` for improved data loading architecture (#92).
 - DuckDB + ibis integration enabling lazy filtering before data enters memory (#92).
