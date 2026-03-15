@@ -3,8 +3,8 @@
 ### Added
 - Chart captions explaining Efficiency Score and scatter plot interpretation (addressing feedback #73 via #84).
 - Example prompt suggestions in the Querychat interface with copyable span components (#76).
-- Playwright tests verifying core dashboard behaviors.
-- Unit tests for refactored chart logic functions.
+- Playwright tests verifying core dashboard behaviors (#98).
+- Unit tests for refactored chart logic functions (#98).
 - Parquet dataset stored in `data/processed/` for improved data loading architecture (#92).
 - DuckDB + ibis integration enabling lazy filtering before data enters memory (#92).
 - M4 Feedback Prioritization issue created and tracked to organize instructor, TA, and peer feedback (#83).
@@ -19,7 +19,7 @@
 - Querychat now handles missing or non-existent columns and returns helpful suggestions instead of failing (#85).
 
 ### Known Issues
-- Scatter plots may still show limited visible trends depending on filter combinations due to dataset size.
+- Scatter plots may still show limited visible trends depending on filter combinations due to dataset size (addressing feedback #73 via #97).
 - Querychat responses depend on external model availability and environment variables for API access.
 
 ### Release Highlight: Interactive Plot Filtering
@@ -44,12 +44,6 @@ A key limitation remains the small dataset size, which restricts the strength of
 **Trade-off:** Feedback items were prioritized based on usability impact. Layout stability, chart interpretation, and AI error handling were treated as critical, while deeper visual redesigns were considered non-critical.
 
 The most impactful guidance came from the feedback review sessions and lectures on dashboard interactivity and reactive data pipelines, which informed both the interactive filtering feature and the move to database-backed filtering.
-
-
-
-
-
-
 
 ## [0.3.0]
 
