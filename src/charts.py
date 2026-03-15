@@ -371,7 +371,6 @@ def chart_engine_efficiency_scatter_interactive(df: pd.DataFrame) -> alt.Chart:
                 alt.Tooltip("Efficiency_Score:Q", title="Efficiency", format=".2f"),
             ],
         )
-        .add_params(fuel_sel)
     )
 
     # Thin regression line per fuel type (no band), excluding Electric for CC logic.
@@ -475,7 +474,6 @@ def chart_hp_price_scatter_interactive(
                 alt.Tooltip("Price_display:Q", title=f"Price ({currency_sym})", format=",.0f"),
             ],
         )
-        .add_params(fuel_sel)
     )
 
     # Thin regression line per fuel type (no band).
