@@ -112,11 +112,20 @@ def test_fuel_filter_change_updates_vehicle_count(page: Page, app_server: str) -
         "Shiny.setInputValue('input_fuel_type', ['Electric'], {priority: 'event'})"
     )
 
-    # Wait for the count to update to a different (smaller) number
-    expect(count_box).not_to_contain_text(str(default_count), timeout=TIMEOUT)
+    # Wait for the count to stabilize at a value different from the default.
+    # Using not_to_contain_text(str(default_count)) is unreliable when the
+    # default count is a substring of the filtered count (e.g. "68" inside
+    # "168"), so we poll until the extracted integer changes instead.
+    def get_count() -> int:
+        return int("".join(ch for ch in count_box.inner_text() if ch.isdigit()))
+
+    page.wait_for_function(
+        f"() => document.querySelector('#value_box_count').innerText.replace(/\\D/g, '') !== '{default_count}'",
+        timeout=TIMEOUT,
+    )
     expect(count_box).to_contain_text(re.compile(r"\d+"), timeout=TIMEOUT)
 
-    filtered_count = int("".join(ch for ch in count_box.inner_text() if ch.isdigit()))
+    filtered_count = get_count()
 
     assert filtered_count < default_count, (
         f"Expected filtered count ({filtered_count}) < default ({default_count}) "

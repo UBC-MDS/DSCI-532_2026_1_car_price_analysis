@@ -20,9 +20,9 @@ dependencies:
   - pyarrow
   - tabulate=0.8.10
   - pytest
-  - playwright
   - pip
   - pip:
       - chatlas
       - querychat==0.5.1
       - vl-convert-python
+      - pytest-playwright
