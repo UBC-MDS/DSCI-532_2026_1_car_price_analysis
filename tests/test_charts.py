@@ -6,6 +6,7 @@ Run from project root: pytest tests/test_charts.py -v
 import sys
 from pathlib import Path
 
+import altair as alt
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
@@ -15,10 +16,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from charts import (
     chart_fuel_avg_price,
+    chart_fuel_avg_price_interactive,
     chart_brand_avg_price,
+    chart_brand_avg_price_interactive,
     chart_engine_efficiency_scatter,
+    chart_engine_efficiency_scatter_interactive,
     chart_fuel_group_efficiency,
+    chart_fuel_group_efficiency_interactive,
     chart_hp_price_scatter,
+    chart_hp_price_scatter_interactive,
     ai_chart_engine_efficiency_scatter,
     ai_chart_fuel_group_efficiency,
     ai_chart_fuel_avg_price,
@@ -28,6 +34,11 @@ from charts import (
 def _is_valid_figure(fig):
     """Return True if fig is a matplotlib Figure with at least one axes."""
     return isinstance(fig, plt.Figure) and len(fig.axes) >= 1
+
+
+def _is_valid_altair_chart(chart):
+    """Return True if chart is an Altair chart object."""
+    return isinstance(chart, alt.TopLevelMixin)
 
 
 # Fixtures: minimal DataFrames for EDA and AI charts 
@@ -92,6 +103,16 @@ def test_chart_brand_avg_price_empty_returns_figure(df_empty):
     assert _is_valid_figure(fig)
 
 
+def test_chart_brand_avg_price_interactive_returns_chart(df_eda):
+    chart = chart_brand_avg_price_interactive(df_eda)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_brand_avg_price_interactive_empty_returns_chart(df_empty):
+    chart = chart_brand_avg_price_interactive(df_empty)
+    assert _is_valid_altair_chart(chart)
+
+
 def test_chart_engine_efficiency_scatter_returns_figure(df_eda):
     fig = chart_engine_efficiency_scatter(df_eda)
     assert _is_valid_figure(fig)
@@ -125,6 +146,77 @@ def test_chart_hp_price_scatter_empty_returns_figure(df_empty):
 def test_chart_hp_price_scatter_currency_params(df_eda):
     fig = chart_hp_price_scatter(df_eda, currency_sym="€", currency_rate=0.92)
     assert _is_valid_figure(fig)
+
+
+def test_chart_fuel_avg_price_interactive_returns_chart(df_eda):
+    chart = chart_fuel_avg_price_interactive(df_eda)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_fuel_avg_price_interactive_empty_returns_chart(df_empty):
+    chart = chart_fuel_avg_price_interactive(df_empty)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_engine_efficiency_scatter_interactive_returns_chart(df_eda):
+    chart = chart_engine_efficiency_scatter_interactive(df_eda)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_engine_efficiency_scatter_interactive_empty_returns_chart(df_empty):
+    chart = chart_engine_efficiency_scatter_interactive(df_empty)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_fuel_group_efficiency_interactive_returns_chart(df_eda):
+    chart = chart_fuel_group_efficiency_interactive(df_eda)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_fuel_group_efficiency_interactive_empty_returns_chart(df_empty):
+    chart = chart_fuel_group_efficiency_interactive(df_empty)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_hp_price_scatter_interactive_returns_chart(df_eda):
+    chart = chart_hp_price_scatter_interactive(df_eda)
+    assert _is_valid_altair_chart(chart)
+
+
+def test_chart_hp_price_scatter_interactive_empty_returns_chart(df_empty):
+    chart = chart_hp_price_scatter_interactive(df_empty)
+    assert _is_valid_altair_chart(chart)
+
+
+#  More specific behavior tests for interactive scatters
+
+def test_engine_efficiency_interactive_has_scatter_and_line(df_eda):
+    """Engine-efficiency interactive chart should be a layered scatter + line by Fuel_Type."""
+    chart = chart_engine_efficiency_scatter_interactive(df_eda)
+    assert isinstance(chart, alt.LayerChart)
+    # Expect exactly two layers: points then line
+    assert len(chart.layer) == 2
+    points_layer, line_layer = chart.layer
+    assert points_layer.mark["type"] == "circle"
+    assert line_layer.mark["type"] == "line"
+    # Color is driven by Fuel_Type for both layers
+    assert "Fuel_Type" in points_layer.encoding.color.shorthand
+    assert "Fuel_Type" in line_layer.encoding.color.shorthand
+
+
+def test_hp_price_interactive_has_scatter_and_line(df_eda):
+    """HP–Price interactive chart should be a layered scatter + line by Fuel_Type."""
+    chart = chart_hp_price_scatter_interactive(df_eda)
+    assert isinstance(chart, alt.LayerChart)
+    assert len(chart.layer) == 2
+    points_layer, line_layer = chart.layer
+    assert points_layer.mark["type"] == "circle"
+    assert line_layer.mark["type"] == "line"
+    # X/Y encodings match Horsepower vs Price_display on both layers
+    assert "Horsepower" in points_layer.encoding.x.shorthand
+    assert "Horsepower" in line_layer.encoding.x.shorthand
+    assert "Price_display" in points_layer.encoding.y.shorthand
+    assert "Price_display" in line_layer.encoding.y.shorthand
 
 
 # AI chart smoke tests 

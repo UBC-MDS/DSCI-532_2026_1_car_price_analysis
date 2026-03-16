@@ -1,8 +1,15 @@
 shiny==1.5.1
+shinywidgets
 pandas==2.2.3
 matplotlib==3.10.1
+altair
+anywidget
+vl-convert-python
 chatlas
 python-dotenv==1.0.0
 tabulate==0.8.10
 querychat==0.5.1
 duckdb
+ibis-framework[duckdb]
+pyarrow
+pytest-playwright

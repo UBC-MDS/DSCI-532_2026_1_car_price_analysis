@@ -16,16 +16,25 @@ except ModuleNotFoundError:
 from shiny import reactive
 from shiny.express import input, render, ui
 from shiny.ui import page_navbar
+from shinywidgets import reactive_read, render_altair
+import altair as alt
+
+# Use offline JS bundle so Altair charts don't load vega from CDN (avoids vega-projection
+# ES2022 syntax errors and "anywidget Failed to initialize" in some browsers).
+try:
+    alt.JupyterChart.enable_offline(True)
+except Exception:
+    pass  # vl-convert-python not installed; charts may fail in some environments
 
 from charts import (
     ai_chart_engine_efficiency_scatter,
     ai_chart_fuel_avg_price,
     ai_chart_fuel_group_efficiency,
-    chart_brand_avg_price,
-    chart_engine_efficiency_scatter,
-    chart_fuel_avg_price,
-    chart_fuel_group_efficiency,
-    chart_hp_price_scatter,
+    chart_brand_avg_price_interactive,
+    chart_engine_efficiency_scatter_interactive,
+    chart_fuel_avg_price_interactive,
+    chart_fuel_group_efficiency_interactive,
+    chart_hp_price_scatter_interactive,
 )
 from data_processing import (
     as_selection as _as_selection,
@@ -37,6 +46,7 @@ from data_processing import (
     filter_dataframe,
     load_data,
     selection_label as _selection_label,
+    to_pandas,
     AI_TEST_PROMPTS,
 )
 
@@ -44,7 +54,8 @@ from data_processing import (
 _dotenv_loaded = load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 github_model = os.getenv("GITHUB_MODEL", "gpt-4.1-mini")
 
-data = load_data()
+data = load_data()                 # ibis table (lazy)
+data_pd = to_pandas(data)          # materialised once for overview stats & querychat
 choices = build_choices(data)
 defaults = build_defaults(choices)
 
@@ -59,18 +70,39 @@ UBER_FUEL_TYPE_DEFAULTS = defaults["fuel_type_defaults"]
 UBER_PRICE_DEFAULT_RANGE = defaults["price_default_range"]
 
 
+def _build_querychat_extra_instructions(df) -> str:
+    """Return guardrails so QueryChat handles unavailable fields gracefully."""
+    columns = getattr(df, "columns", [])
+    columns_list = columns.tolist() if hasattr(columns, "tolist") else list(columns)
+    available_columns = ", ".join(sorted(map(str, columns_list)))
+    return (
+        "You are helping users analyze the global_cars_enhanced dataset. "
+        "Never invent columns, values, or metrics that are not present in this dataset.\n\n"
+        f"Available columns: {available_columns}\n\n"
+        "When the user asks for a missing column, unavailable metric, or request that is not "
+        "applicable to this dataset:\n"
+        "1) Clearly say the requested field/analysis is not available.\n"
+        "2) Mention 2-4 relevant available columns that are close alternatives.\n"
+        "3) Offer one concrete, dataset-valid rephrasing they can try next.\n"
+        "4) Keep the tone helpful and concise.\n"
+        "Do not fail silently and do not return stack traces or technical errors."
+    )
+
+
 qc = None
 if querychat is not None:
+    # Try ibis table directly; fall back to data_pd if querychat errors
     qc = querychat.QueryChat(
-        data,
+        data_pd,
         "global_cars_enhanced",
         client=f"github/{github_model}",
+        extra_instructions=_build_querychat_extra_instructions(data),
         greeting=(
             "Hello! I can help you explore the car price dataset. "
             "Try asking things like:\n"
-            "- *Show only hybrid and electric vehicles under $35,000 with efficiency score above 0.6*\n"
-            "- *Which brands have the highest average price?*\n"
-            "- *Filter to cars under $30,000 with efficiency score above 0.5*"
+            '- <span class="suggestion">Show only hybrid and electric vehicles under $35,000 with efficiency score above 0.6</span>\n'
+            '- <span class="suggestion">Which brands have the highest average price?</span>\n'
+            '- <span class="suggestion">Filter to cars under $30,000 with efficiency score above 0.5</span>'
         ),
     )
 # qc.server() is called inside the AI Assistant tab (within active Shiny session)
@@ -164,6 +196,12 @@ ui.head_content(
     .btn {
         border-radius: 10px;
     }
+
+    .card p {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-top: 0.5rem;
+    }
     """)
 )
 
@@ -192,13 +230,13 @@ with ui.nav_panel("Overview"):
 
             @render.ui
             def overview_dataset_stats():
-                n_records = len(data)
-                n_brands = data["Brand"].nunique()
-                n_countries = data["Manufacturing_Country"].nunique()
-                year_min = int(data["Manufacture_Year"].min())
-                year_max = int(data["Manufacture_Year"].max())
-                p_min = int(data["Price_USD"].min())
-                p_max = int(data["Price_USD"].max())
+                n_records = len(data_pd)
+                n_brands = data_pd["Brand"].nunique()
+                n_countries = data_pd["Manufacturing_Country"].nunique()
+                year_min = int(data_pd["Manufacture_Year"].min())
+                year_max = int(data_pd["Manufacture_Year"].max())
+                p_min = int(data_pd["Price_USD"].min())
+                p_max = int(data_pd["Price_USD"].max())
                 currency = input.input_currency()
                 rate = CURRENCY_RATES[currency]
                 sym = CURRENCY_SYMBOLS[currency]
@@ -259,26 +297,99 @@ with ui.nav_panel("EDA"):
             ui.p("Rates are approximate.", class_="text-muted", style="font-size:0.85rem;")
             ui.input_action_button("reset_btn", "Reset Filters")
 
+        brand_chart_selection_state = reactive.value([])
+        fuel_chart_selection_state = reactive.value([])
+
+        @reactive.effect
+        def _sync_brand_chart_selection():
+            try:
+                selection = reactive_read(plot_brand_price.widget.selections, "brand_pick")
+            except Exception:
+                return
+
+            parsed = []
+            if selection is not None and selection.value is not None:
+                parsed = [item["Brand"] for item in selection.value if "Brand" in item]
+
+            if parsed != brand_chart_selection_state.get():
+                brand_chart_selection_state.set(parsed)
+
+        @reactive.effect
+        def _sync_fuel_chart_selection():
+            try:
+                selection = reactive_read(fuel_eff_plot.widget.selections, "fuel_pick")
+            except Exception:
+                return
+
+            parsed = []
+            if selection is not None and selection.value is not None:
+                parsed = [item["Fuel_Type"] for item in selection.value if "Fuel_Type" in item]
+
+            if parsed != fuel_chart_selection_state.get():
+                fuel_chart_selection_state.set(parsed)
+
         @reactive.calc
-        def filtered_df():
+        def brand_chart_selection():
+            return brand_chart_selection_state.get()
+
+        @reactive.calc
+        def fuel_chart_selection():
+            return fuel_chart_selection_state.get()
+
+        @reactive.calc
+        def sidebar_filtered_df():
+            selected_brands = _as_selection(input.input_brand())
+
             return filter_dataframe(
                 data,
-                brands=_as_selection(input.input_brand()),
+                brands=selected_brands,
                 body_types=_as_selection(input.input_body_type()),
                 fuel_types=_as_selection(input.input_fuel_type()),
                 price_range=input.input_price_range(),
             )
 
         @reactive.calc
+        def filtered_df():
+            clicked_brands = brand_chart_selection()
+            clicked_fuels = fuel_chart_selection()
+
+            t = sidebar_filtered_df()
+            if clicked_brands:
+                t = t.filter(t["Brand"].isin(clicked_brands))
+            if clicked_fuels:
+                t = t.filter(t["Fuel_Type"].isin(clicked_fuels))
+            return t
+
+        @reactive.calc
+        def fuel_chart_df():
+            # Fuel chart responds to brand bar selection.
+            t = sidebar_filtered_df()
+            clicked_brands = brand_chart_selection()
+            if clicked_brands:
+                t = t.filter(t["Brand"].isin(clicked_brands))
+            return t
+
+        @reactive.calc
+        def brand_chart_df():
+            # Brand chart responds to fuel bar selection.
+            t = sidebar_filtered_df()
+            clicked_fuels = fuel_chart_selection()
+            if clicked_fuels:
+                t = t.filter(t["Fuel_Type"].isin(clicked_fuels))
+            return t
+
+        @reactive.calc
         def filter_state_values():
-            brand_label = _selection_label(input.input_brand(), brand_choices)
+            selected_brands = brand_chart_selection() or _as_selection(input.input_brand())
+            brand_label = _selection_label(selected_brands, brand_choices)
             body_type_label = _selection_label(input.input_body_type(), body_type_choices)
-            fuel_type_label = _selection_label(input.input_fuel_type(), fuel_type_choices)
+            selected_fuels = fuel_chart_selection() or _as_selection(input.input_fuel_type())
+            fuel_type_label = _selection_label(selected_fuels, fuel_type_choices)
             price_low, price_high = input.input_price_range()
             currency = input.input_currency()
             rate = CURRENCY_RATES[currency]
             sym = CURRENCY_SYMBOLS[currency]
-            count = len(filtered_df())
+            count = filtered_df().count().to_pandas()
             return {
                 "brand": brand_label,
                 "body_type": body_type_label,
@@ -327,7 +438,6 @@ with ui.nav_panel("EDA"):
                         pill("Body Type", state["body_type"]),
                         pill("Fuel Type", state["fuel_type"]),
                         pill("Price", state["price"]),
-                        pill("Vehicles", state["vehicles"]),
                         style=(
                             "display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));"
                             "gap:0.6rem;"
@@ -366,10 +476,16 @@ with ui.nav_panel("EDA"):
             with ui.card():
                 ui.card_header("Average Price by Fuel Type")
 
-                @render.plot
+                ui.p(
+                    "Click bars to filter the EDA view by fuel type. Click again to clear.",
+                    class_="text-muted",
+                    style="font-size:0.85rem;",
+                )
+
+                @render_altair
                 def fuel_eff_plot():
-                    return chart_fuel_avg_price(
-                        filtered_df(),
+                    return chart_fuel_avg_price_interactive(
+                        to_pandas(fuel_chart_df()),
                         currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                         currency_rate=CURRENCY_RATES[input.input_currency()],
                     )
@@ -377,44 +493,59 @@ with ui.nav_panel("EDA"):
             with ui.card():
                 ui.card_header("Average Price by Brand")
 
-                @render.plot
+                ui.p(
+                    "Click bars to filter the EDA view by brand. Clear the selection by clicking the active bar again or clicking empty space.",
+                    class_="text-muted",
+                    style="font-size:0.85rem;",
+                )
+
+                @render_altair
                 def plot_brand_price():
-                    return chart_brand_avg_price(
-                        filtered_df(),
+                    return chart_brand_avg_price_interactive(
+                        to_pandas(brand_chart_df()),
                         currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
                         currency_rate=CURRENCY_RATES[input.input_currency()],
                     )
 
-        with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
+        # Cross-filter is handled via reactive_read in the chart selection calcs above.
+
+        with ui.layout_columns(col_widths=(6, 6), gap="1.5rem", equal_height=True):
             with ui.card():
                 ui.card_header("Engine Size vs. Performance Efficiency")
-
-                @render.plot
+                ui.p(
+                    "Trend by fuel type (Electric excluded from trend). Click legend to highlight. Efficiency = normalized mileage & power (0–1).",
+                    class_="text-muted",
+                    style="font-size:0.85rem;",
+                )
+                @render_altair
                 def scatter_engine_efficiency():
-                    return chart_engine_efficiency_scatter(filtered_df())
+                    return chart_engine_efficiency_scatter_interactive(to_pandas(filtered_df()))
 
             with ui.card():
                 ui.card_header("Average Performance Efficiency by Fuel Type")
-
-                @render.plot
+                ui.p(
+                    "Higher = better. Hybrid vs Standard Fuel.",
+                    class_="text-muted",
+                    style="font-size:0.85rem;",
+                )
+                @render_altair
                 def bar_fuel_efficiency():
-                    return chart_fuel_group_efficiency(filtered_df())
+                    return chart_fuel_group_efficiency_interactive(to_pandas(filtered_df()))
 
-        with ui.layout_columns(col_widths=(6, 6), gap="1rem", equal_height=True):
-            with ui.card():
-                ui.card_header("Horsepower vs Price")
-
-                @render.plot
-                def plot_hp_price():
-                    return chart_hp_price_scatter(
-                        filtered_df(),
-                        currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
-                        currency_rate=CURRENCY_RATES[input.input_currency()],
-                    )
-
-            with ui.card():
-                ui.card_header("Manufacture Year vs. Mileage")
-                ui.p("Placeholder — future chart")
+        with ui.card():
+            ui.card_header("Horsepower vs Price")
+            ui.p(
+                "Trend lines by fuel type; top-priced vehicles labeled. Click legend to highlight.",
+                class_="text-muted",
+                style="font-size:0.85rem;",
+            )
+            @render_altair
+            def plot_hp_price():
+                return chart_hp_price_scatter_interactive(
+                    to_pandas(filtered_df()),
+                    currency_sym=CURRENCY_SYMBOLS[input.input_currency()],
+                    currency_rate=CURRENCY_RATES[input.input_currency()],
+                )
 
 
 with ui.nav_panel("AI Assistant"):
@@ -427,7 +558,8 @@ with ui.nav_panel("AI Assistant"):
 
         with ui.layout_sidebar():
             with ui.sidebar(width=400):
-                qc.ui()
+                with ui.tags.div(style="max-height: 55vh; overflow-y: auto; padding-right: 10px;"):
+                    qc.ui()
                 ui.hr()
                 ui.p("Prompts tested for AI visuals:")
                 ui.tags.ul(*[ui.tags.li(prompt) for prompt in AI_TEST_PROMPTS])

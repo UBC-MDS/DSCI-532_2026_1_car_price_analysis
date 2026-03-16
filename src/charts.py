@@ -12,6 +12,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import matplotlib.pyplot as plt
+import numpy as np
+import altair as alt
 import pandas as pd
 
 from data_processing import (
@@ -47,6 +49,16 @@ def _add_fuel_group(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _empty_altair_fig(message: str = "No data for selected filters.") -> alt.Chart:
+    """Return a blank Altair chart with a centred message."""
+    return (
+        alt.Chart(pd.DataFrame({"message": [message]}))
+        .mark_text(align="center", baseline="middle", fontSize=14, color="#4b5563")
+        .encode(text="message:N")
+        .properties(width=FIG_WIDTH * 80, height=FIG_HEIGHT * 80)
+    )
+
+
 # ════════════════════════════════════════════════════════════════
 # EDA Charts
 # ════════════════════════════════════════════════════════════════
@@ -78,6 +90,7 @@ def chart_fuel_avg_price(
 
     ax.set_xlabel("Fuel Type")
     ax.set_ylabel(f"Average Price ({currency_sym})")
+    ax.set_ylim(bottom=0)
     ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(False)
     return fig
@@ -114,10 +127,59 @@ def chart_brand_avg_price(
 
     ax.set_xlabel("Brand")
     ax.set_ylabel(f"Average Price ({currency_sym})")
+    ax.set_ylim(bottom=0)
     ax.tick_params(axis="x", rotation=45, labelsize=8)
     ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(False)
     return fig
+
+
+def chart_brand_avg_price_interactive(
+    df: pd.DataFrame, currency_sym: str = "$", currency_rate: float = 1.0
+) -> alt.Chart:
+    """Interactive bar chart of average Price_USD by Brand for the EDA tab."""
+    if df.empty:
+        return alt.Chart(pd.DataFrame({"message": ["No data for selected filters."]})).mark_text(
+            align="center",
+            baseline="middle",
+            fontSize=14,
+            color="#4b5563",
+        ).encode(text="message:N").properties(width=FIG_WIDTH * 80, height=FIG_HEIGHT * 80)
+
+    agg = (
+        df.groupby("Brand", as_index=False)["Price_USD"]
+        .mean()
+        .sort_values("Price_USD", ascending=False)
+    )
+    agg["Price_display"] = agg["Price_USD"] * currency_rate
+
+    brand_pick = alt.selection_point(name="brand_pick", fields=["Brand"], empty=True)
+
+    return (
+        alt.Chart(agg)
+        .mark_bar()
+        .encode(
+            x=alt.X("Brand:N", sort=None, title="Brand", axis=alt.Axis(labelAngle=-35)),
+            y=alt.Y(
+                "Price_display:Q",
+                title=f"Average Price ({currency_sym})",
+                axis=alt.Axis(format=",.0f"),
+                scale=alt.Scale(zero=True, nice=True),
+            ),
+            color=alt.condition(
+                brand_pick,
+                alt.value("#3b82f6"),
+                alt.value("#bfd7ea"),
+            ),
+            tooltip=[
+                alt.Tooltip("Brand:N", title="Brand"),
+                alt.Tooltip("Price_display:Q", title=f"Average Price ({currency_sym})", format=",.0f"),
+            ],
+        )
+        .add_params(brand_pick)
+        .properties(width="container", height=320)
+        # .configure_view(stroke=None)
+    )
 
 
 def chart_engine_efficiency_scatter(df: pd.DataFrame) -> plt.Figure:
@@ -237,6 +299,204 @@ def chart_hp_price_scatter(
 
 
 # ════════════════════════════════════════════════════════════════
+# EDA Interactive Charts  (Altair — tooltips + click-to-filter)
+# ════════════════════════════════════════════════════════════════
+
+def chart_fuel_avg_price_interactive(
+    df: pd.DataFrame, currency_sym: str = "$", currency_rate: float = 1.0
+) -> alt.Chart:
+    """Interactive bar chart — avg Price_USD by Fuel_Type (EDA tab). Click bar to filter."""
+    agg = df.groupby("Fuel_Type", as_index=False)["Price_USD"].mean()
+    agg["Price_display"] = agg["Price_USD"] * currency_rate
+
+    if agg.empty:
+        return _empty_altair_fig()
+
+    fuel_pick = alt.selection_point(name="fuel_pick", fields=["Fuel_Type"], empty=True)
+
+    return (
+        alt.Chart(agg)
+        .mark_bar()
+        .encode(
+            x=alt.X("Fuel_Type:N", title="Fuel Type"),
+            y=alt.Y(
+                "Price_display:Q",
+                title=f"Average Price ({currency_sym})",
+                axis=alt.Axis(format=",.0f"),
+                scale=alt.Scale(zero=True, nice=True),
+            ),
+            color=alt.condition(
+                fuel_pick,
+                alt.value("#3b82f6"),
+                alt.value("#bfd7ea"),
+            ),
+            tooltip=[
+                alt.Tooltip("Fuel_Type:N", title="Fuel Type"),
+                alt.Tooltip("Price_display:Q", title=f"Avg Price ({currency_sym})", format=",.0f"),
+            ],
+        )
+        .add_params(fuel_pick)
+        .properties(width="container", height=320)
+        # .configure_view(stroke=None)
+    )
+
+
+def chart_engine_efficiency_scatter_interactive(df: pd.DataFrame) -> alt.Chart:
+    """Engine_CC vs Efficiency_Score — scatter + thin regression line per fuel type."""
+    if df.empty:
+        return _empty_altair_fig()
+
+    df = df.dropna(subset=["Engine_CC", "Efficiency_Score"]).copy()
+    if df.empty:
+        return _empty_altair_fig()
+
+    fuel_sel = alt.selection_point(name="eng_fuel_sel", fields=["Fuel_Type"], bind="legend")
+    fuel_domain = list(EDA_ENGINE_EFFICIENCY_COLORS.keys())
+    fuel_range = ["#4c6fff", "#f4a261", "#2a9d8f", "#9b5de5"]
+    color_scale = alt.Scale(domain=fuel_domain, range=fuel_range[: len(fuel_domain)])
+
+    # Scatter layer (small points).
+    points = (
+        alt.Chart(df)
+        .mark_circle(size=28, opacity=0.5)
+        .encode(
+            x=alt.X("Engine_CC:Q", title="Engine Size (CC)"),
+            y=alt.Y("Efficiency_Score:Q", title="Performance Efficiency", scale=alt.Scale(domain=[0, 1])),
+            color=alt.Color("Fuel_Type:N", scale=color_scale, legend=alt.Legend(orient="top", title="Fuel Type")),
+            opacity=alt.condition(fuel_sel, alt.value(0.8), alt.value(0.15)),
+            tooltip=[
+                alt.Tooltip("Brand:N", title="Brand"),
+                alt.Tooltip("Fuel_Type:N", title="Fuel Type"),
+                alt.Tooltip("Engine_CC:Q", title="Engine CC", format=","),
+                alt.Tooltip("Efficiency_Score:Q", title="Efficiency", format=".2f"),
+            ],
+        )
+    )
+
+    # Thin regression line per fuel type (no band), excluding Electric for CC logic.
+    df_no_electric = df[df["Fuel_Type"] != "Electric"]
+    line = (
+        alt.Chart(df_no_electric)
+        .transform_regression("Engine_CC", "Efficiency_Score", groupby=["Fuel_Type"])
+        .mark_line(strokeWidth=1.5)
+        .encode(
+            x="Engine_CC:Q",
+            y=alt.Y("Efficiency_Score:Q", scale=alt.Scale(domain=[0, 1])),
+            color=alt.Color("Fuel_Type:N", scale=color_scale, legend=None),
+            opacity=alt.condition(fuel_sel, alt.value(0.9), alt.value(0.25)),
+        )
+    )
+
+    chart = alt.layer(points, line).add_params(fuel_sel)
+
+    return chart.properties(width="container", height=320).configure_axis(gridOpacity=0.2).configure_view(
+        strokeWidth=0
+    )
+
+
+def chart_fuel_group_efficiency_interactive(df: pd.DataFrame) -> alt.Chart:
+    """Bar chart — avg Efficiency_Score for Hybrid vs Standard Fuel (EDA tab). Hover tooltip."""
+    if df.empty:
+        return _empty_altair_fig()
+
+    df = _add_fuel_group(df)
+    agg = df.groupby("Fuel_Group", as_index=False)["Efficiency_Score"].mean()
+
+    order = ["Hybrid", "Standard Fuel"]
+    agg["Fuel_Group"] = pd.Categorical(agg["Fuel_Group"], categories=order, ordered=True)
+    agg = agg.sort_values("Fuel_Group")
+
+    return (
+        alt.Chart(agg)
+        .mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6, width=80)
+        .encode(
+            x=alt.X("Fuel_Group:N", title=None, sort=order),
+            y=alt.Y(
+                "Efficiency_Score:Q",
+                title="Avg Performance Efficiency",
+                scale=alt.Scale(domain=[0, 1]),
+                axis=alt.Axis(format=".1f"),
+            ),
+            color=alt.Color(
+                "Fuel_Group:N",
+                scale=alt.Scale(
+                    domain=["Hybrid", "Standard Fuel"],
+                    range=["#5f0f40", "#ff7f51"],
+                ),
+                legend=None,
+            ),
+            tooltip=[
+                alt.Tooltip("Fuel_Group:N", title="Group"),
+                alt.Tooltip("Efficiency_Score:Q", title="Avg Efficiency", format=".2f"),
+            ],
+        )
+        .properties(width="container", height=320)
+        # .configure_view(stroke=None)
+    )
+
+
+def chart_hp_price_scatter_interactive(
+    df: pd.DataFrame, currency_sym: str = "$", currency_rate: float = 1.0
+) -> alt.Chart:
+    """Horsepower vs Price — scatter + thin regression line per fuel type."""
+    if df.empty:
+        return _empty_altair_fig()
+
+    df = df.dropna(subset=["Horsepower", "Price_USD"]).copy()
+    df["Price_display"] = df["Price_USD"] * currency_rate
+
+    fuel_sel = alt.selection_point(name="hp_fuel_sel", fields=["Fuel_Type"], bind="legend")
+    fuel_domain = list(EDA_HP_PRICE_COLORS.keys())
+    fuel_range = ["#4c6fff", "#3a8fa8", "#3ab5a0", "#9b5de5"]
+    color_scale = alt.Scale(domain=fuel_domain, range=fuel_range[: len(fuel_domain)])
+
+    # Scatter layer.
+    points = (
+        alt.Chart(df)
+        .mark_circle(size=28, opacity=0.5)
+        .encode(
+            x=alt.X("Horsepower:Q", title="Horsepower"),
+            y=alt.Y(
+                "Price_display:Q",
+                title=f"Price ({currency_sym})",
+                axis=alt.Axis(format=",.0f"),
+            ),
+            color=alt.Color(
+                "Fuel_Type:N",
+                scale=color_scale,
+                legend=alt.Legend(orient="top", title="Fuel Type"),
+            ),
+            opacity=alt.condition(fuel_sel, alt.value(0.8), alt.value(0.15)),
+            tooltip=[
+                alt.Tooltip("Brand:N", title="Brand"),
+                alt.Tooltip("Fuel_Type:N", title="Fuel Type"),
+                alt.Tooltip("Horsepower:Q", title="Horsepower", format=","),
+                alt.Tooltip("Price_display:Q", title=f"Price ({currency_sym})", format=",.0f"),
+            ],
+        )
+    )
+
+    # Thin regression line per fuel type (no band).
+    line = (
+        alt.Chart(df)
+        .transform_regression("Horsepower", "Price_display", groupby=["Fuel_Type"])
+        .mark_line(strokeWidth=1.5)
+        .encode(
+            x="Horsepower:Q",
+            y="Price_display:Q",
+            color=alt.Color("Fuel_Type:N", scale=color_scale, legend=None),
+            opacity=alt.condition(fuel_sel, alt.value(0.9), alt.value(0.25)),
+        )
+    )
+
+    chart = alt.layer(points, line).add_params(fuel_sel)
+
+    return chart.properties(width="container", height=340).configure_axis(gridOpacity=0.2).configure_view(
+        strokeWidth=0
+    )
+
+
+# ════════════════════════════════════════════════════════════════
 # AI Tab Charts  (consume querychat filtered df)
 # ════════════════════════════════════════════════════════════════
 
@@ -351,6 +611,7 @@ def ai_chart_fuel_avg_price(
     ax.set_xlabel("Fuel Type")
     ax.set_ylabel(f"Average Price ({currency_sym})")
     ax.set_title("Average Price by Fuel Type")
+    ax.set_ylim(bottom=0)
     ax.yaxis.set_major_formatter(make_currency_formatter(currency_sym))
     ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
